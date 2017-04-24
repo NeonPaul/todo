@@ -1,7 +1,7 @@
 <style src="todomvc-app-css/index.css"></style>
 
 <template>
-  <section class="todoapp">
+  <section class="todoapp" v-if="loggedIn">
     <!-- header -->
     <header class="header">
       <h1>todos</h1>
@@ -41,11 +41,15 @@
       </button>
     </footer>
   </section>
+  <section v-else>
+    <login @submit="logIn"></login>
+  </section>
 </template>
 
 <script>
-import { mapMutations } from 'vuex'
+import { mapMutations, mapGetters } from 'vuex'
 import Todo from './Todo.vue'
+import Login from './Login.vue'
 
 const filters = {
   all: todos => todos,
@@ -54,7 +58,7 @@ const filters = {
 }
 
 export default {
-  components: { Todo },
+  components: { Todo, Login },
   data () {
     return {
       visibility: 'all',
@@ -62,6 +66,7 @@ export default {
     }
   },
   computed: {
+    ...mapGetters(['loggedIn']),
     todos () {
       return this.$store.state.todos
     },
@@ -76,6 +81,9 @@ export default {
     }
   },
   methods: {
+    logIn (details) {
+      this.$store.dispatch('logIn', details)
+    },
     addTodo (e) {
       var text = e.target.value
       if (text.trim()) {

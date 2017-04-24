@@ -1,4 +1,5 @@
 export const STORAGE_KEY = 'todos-vuejs'
+const AUTH_KEY = 'todo-auth'
 
 // for testing
 if (navigator.userAgent.indexOf('PhantomJS') > -1) {
@@ -6,10 +7,25 @@ if (navigator.userAgent.indexOf('PhantomJS') > -1) {
 }
 
 export const state = {
+  auth: null,
   todos: JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '[]')
 }
 
+export const getters = {
+  loggedIn (state) {
+    return !!state.auth
+  }
+}
+
+export const mutationTypes = {
+  SET_AUTH: 'setAuth'
+}
+
 export const mutations = {
+  setAuth (state, { token }) {
+    state.auth = token
+  },
+
   addTodo (state, { text }) {
     state.todos.push({
       text,
