@@ -4,6 +4,7 @@ const URL = require("url");
 const app = express();
 const { clientId, secret, port } = require("./env.js");
 const state = (Math.random() * 10 ** 17).toString(16);
+let accessToken;
 
 const auth = `https://api.toodledo.com/3/account/authorize.php?response_type=code&client_id=${clientId}&state=${state}&scope=basic%20tasks`;
 
@@ -18,7 +19,7 @@ const collect = res =>
     });
   });
 
-const getItems = code =>
+const getAccessToken = code =>
   new Promise((resolve, reject) => {
     const r = https.request(
       {
@@ -31,11 +32,24 @@ const getItems = code =>
         }
       },
       async res => {
-        const { access_token } = JSON.parse(await collect(res));
+        try {
+          const { access_token } = JSON.parse(await collect(res));
+          resolve(access_token)
+        } catch (e) {
+          reject(e)
+        }
+      }
+    )
 
+    r.write(`grant_type=authorization_code&code=${code}&vers=3&os=7`);
+    r.end();
+  })
+
+const getItems = accessToken =>
+  new Promise((resolve, reject) => {
         https.get(
           `https://api.toodledo.com/3/tasks/get.php?access_token=` +
-            access_token,
+            accessToken,
           async res => {
             const str = await collect(res);
 
@@ -49,19 +63,22 @@ const getItems = code =>
         );
       }
     );
-    r.write(`grant_type=authorization_code&code=${code}&vers=3&os=7`);
-
-    r.end();
-  });
 
 app.get("/", async (req, res) => {
-  const { code, state, error } = req.query;
+  if (!accessToken) {
+    const { code } = req.query;
 
-  if (!code && !state && !error) {
-    res.redirect(auth);
-  } else {
-    res.send(await getItems(code));
+    if (!code) {
+      res.redirect(auth);
+      return;
+    }
+
+    accessToken = await getAccessToken(code)
+    res.redirect('/');
+    return;
   }
+
+  res.send(await getItems(accessToken));
 });
 
 app.listen(port, () => {
