@@ -5,9 +5,9 @@ const app = express();
 const { clientId, secret, port } = require("./env.js");
 const state = (Math.random() * 10 ** 17).toString(16);
 
-const tryRequire = f =>  { try { return require(f) } catch(e) { } }
+const tryRequire = f =>  { try { return require(f) } catch(e) { console.log(e) } }
 
-let accessToken = tryRequire('./token.json')
+let accessToken = tryRequire('../token.json')
 
 const auth = `https://api.toodledo.com/3/account/authorize.php?response_type=code&client_id=${clientId}&state=${state}&scope=basic%20tasks%20write`;
 
@@ -39,7 +39,7 @@ const getAccessToken = code =>
           const txt = await collect(res)
           console.log(txt)
           const { access_token } = JSON.parse(txt);
-          require('fs').writeFileSync('token.json', JSON.stringify(access_token))
+          require('fs').writeFileSync(__dirname + '/../token.json', JSON.stringify(access_token))
           resolve(access_token)
         } catch (e) {
           reject(e)
@@ -96,8 +96,35 @@ app.get("/", async (req, res) => {
     return;
   }
 
-  res.send(await getItems(accessToken));
+  res.send(`
+  <form action="add">
+    <input name="title"><button>Ok</button>
+  </form>
+  ` + await getItems(accessToken));
 });
+
+app.get("/add", async (req, res) => {
+  const r = https.request(
+    {
+      ...URL.parse('https://api.toodledo.com/3/tasks/add.php'),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    }, 
+    (r) => {
+      console.log(r.statusCode)
+      res.redirect('/')
+
+      collect(r).then(d => {
+        console.log(d)
+      })
+    }
+  )
+
+  r.write(`access_token=${accessToken}&tasks=[${JSON.stringify({title: req.query.title})}]`)
+  r.end()
+})
 
 app.post("/:id", async (req, res) => {
   const r = https.request(
