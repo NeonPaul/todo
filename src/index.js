@@ -54,13 +54,13 @@ const getAccessToken = code =>
 const getItems = accessToken =>
   new Promise((resolve, reject) => {
         https.get(
-          `https://api.toodledo.com/3/tasks/get.php?access_token=${accessToken}&fields=note`,
+          `https://api.toodledo.com/3/tasks/get.php?access_token=${accessToken}&fields=note,status`,
           async res => {
             const str = await collect(res);
 
             resolve(
               JSON.parse(str)
-                .filter(i => i.id && !i.completed)
+                .filter(i => i.id && !i.completed && i.status == 0)
                 .map(i =>
                   `<form action="/${i.id}" style="display:inline" method="post">
                     <button>x</button>
