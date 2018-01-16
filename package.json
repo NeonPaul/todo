@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.16.2",
+    "isomorphic-form": "^0.1.0",
     "opn": "^5.1.0"
   }
 }

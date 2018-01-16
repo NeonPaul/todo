@@ -1,6 +1,7 @@
 const express = require("express");
 const https = require("https");
 const URL = require("url");
+const parseFormData = require("isomorphic-form/dist/server");
 const app = express();
 const { clientId, secret, port } = require("./env.js");
 const state = (Math.random() * 10 ** 17).toString(16);
@@ -58,6 +59,11 @@ const getItems = accessToken =>
           async res => {
             const str = await collect(res);
 
+            if (res.statusCode >= 400) {
+              reject(new Error(str))
+              return
+            }
+
             resolve(
               JSON.parse(str)
                 .filter(i => i.id && !i.completed && i.status == 0)
@@ -78,32 +84,39 @@ const getItems = accessToken =>
       }
     );
 
-app.get("/", async (req, res) => {
-  if (!accessToken) {
-    const { code } = req.query;
+app.get("/", async (req, res, next) => {
+  try {
+    if (!accessToken) {
+      const { code } = req.query;
 
-    if (!code) {
-      res.redirect(auth);
+      if (!code) {
+        res.redirect(auth);
+        return;
+      }
+
+      console.log(code)
+
+      accessToken = await getAccessToken(code)
+
+      console.log(accessToken)
+      res.redirect('/');
       return;
     }
 
-    console.log(code)
-
-    accessToken = await getAccessToken(code)
-
-    console.log(accessToken)
-    res.redirect('/');
-    return;
+    res.send(`
+    <form action="add" method="post">
+      <input name="title"><button>Ok</button>
+    </form>
+    ` + await getItems(accessToken));
+  } catch (e) {
+    next(e)
   }
-
-  res.send(`
-  <form action="add">
-    <input name="title"><button>Ok</button>
-  </form>
-  ` + await getItems(accessToken));
 });
 
-app.get("/add", async (req, res) => {
+app.post("/add", async (req, res) => {
+  const data = await parseFormData(req);
+  const title = data.get('title')
+
   const r = https.request(
     {
       ...URL.parse('https://api.toodledo.com/3/tasks/add.php'),
@@ -122,7 +135,7 @@ app.get("/add", async (req, res) => {
     }
   )
 
-  r.write(`access_token=${accessToken}&tasks=[${JSON.stringify({title: req.query.title})}]`)
+  r.write(`access_token=${accessToken}&tasks=[${encodeURIComponent(JSON.stringify({title}))}]`)
   r.end()
 })
 
@@ -147,6 +160,22 @@ app.post("/:id", async (req, res) => {
 
   r.write(`access_token=${accessToken}&tasks=[{"id"%3A${req.params.id}%2C"completed":1}]`)
   r.end()
+})
+
+app.use((err, req, res, next) => {
+  let msg = {};
+
+  try {
+    msg = JSON.parse(err.message);
+  } catch(e) {}
+
+  if (msg.errorCode === 2) {
+    accessToken = null;
+
+    res.redirect(req.originalUrl);
+  }
+
+  res.send('<pre>' + err.toString() + '</pre>')
 })
 
 app.listen(port, () => {
