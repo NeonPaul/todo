@@ -12,6 +12,7 @@
   "dependencies": {
     "express": "^4.16.2",
     "isomorphic-form": "^0.1.0",
+    "marked": "^0.3.12",
     "opn": "^5.1.0"
   }
 }

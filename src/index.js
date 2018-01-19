@@ -5,6 +5,7 @@ const parseFormData = require("isomorphic-form/dist/server");
 const app = express();
 const { clientId, secret, port } = require("./env.js");
 const state = (Math.random() * 10 ** 17).toString(16);
+const marked = require("marked");
 
 const tryRequire = f =>  { try { return require(f) } catch(e) { console.log(e) } }
 
@@ -74,7 +75,7 @@ const getItems = accessToken =>
                   ${i.note ?
                     `<details style="display: inline;">
                       <summary>${i.title}</summary>
-                      ${i.note}
+                      ${marked(i.note)}
                     </details>` : i.title}
                   <details style="display: inline">
                     <summary>Edit</summary>
