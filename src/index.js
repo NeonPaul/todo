@@ -75,7 +75,15 @@ const getItems = accessToken =>
                     `<details style="display: inline;">
                       <summary>${i.title}</summary>
                       ${i.note}
-                    </details>` : i.title}`
+                    </details>` : i.title}
+                  <details style="display: inline">
+                    <summary>Edit</summary>
+                    <form action="/edit/${i.id}" method="post">
+                      <input name=title value="${ i.title.replace(/"/g, '&quot;') }"><br>
+                      <textarea name=note>${i.note}</textarea><br>
+                      <button>Save</button>
+                    </form>
+                  </details>`
                 )
                 .join("<br>")
             );
@@ -105,7 +113,8 @@ app.get("/", async (req, res, next) => {
 
     res.send(`
     <form action="add" method="post">
-      <input name="title"><button>Ok</button>
+      <input name="title"><button>Ok</button><br>
+      <textarea name="note"></textarea>
     </form>
     ` + await getItems(accessToken));
   } catch (e) {
@@ -116,6 +125,7 @@ app.get("/", async (req, res, next) => {
 app.post("/add", async (req, res) => {
   const data = await parseFormData(req);
   const title = data.get('title')
+  const note = data.get('note')
 
   const r = https.request(
     {
@@ -135,7 +145,35 @@ app.post("/add", async (req, res) => {
     }
   )
 
-  r.write(`access_token=${accessToken}&tasks=[${encodeURIComponent(JSON.stringify({title}))}]`)
+  r.write(`access_token=${accessToken}&tasks=[${encodeURIComponent(JSON.stringify({title, note}))}]`)
+  r.end()
+})
+
+app.post("/edit/:id", async (req, res) => {
+  const data = await parseFormData(req);
+  const title = data.get('title')
+  const note = data.get('note')
+  const id = req.params.id;
+
+  const r = https.request(
+    {
+      ...URL.parse('https://api.toodledo.com/3/tasks/edit.php'),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    }, 
+    (r) => {
+      console.log(r.statusCode)
+      res.redirect('/')
+
+      collect(r).then(d => {
+        console.log(d)
+      })
+    }
+  )
+
+  r.write(`access_token=${accessToken}&tasks=[${encodeURIComponent(JSON.stringify({id, note, title}))}]`)
   r.end()
 })
 
