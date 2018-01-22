@@ -56,7 +56,7 @@ const getAccessToken = code =>
 const getItems = accessToken =>
   new Promise((resolve, reject) => {
         https.get(
-          `https://api.toodledo.com/3/tasks/get.php?access_token=${accessToken}&fields=note,status`,
+          `https://api.toodledo.com/3/tasks/get.php?access_token=${accessToken}&fields=note,status,tag`,
           async res => {
             const str = await collect(res);
 
@@ -68,10 +68,31 @@ const getItems = accessToken =>
             resolve(
               JSON.parse(str)
                 .filter(i => i.id && !i.completed && i.status == 0)
-                .map(i =>
-                  `<form action="/${i.id}" style="display:inline" method="post">
+                .map((todo, ix) => {
+                  const [, weight] = todo.tag.match(/weight: (-?[0-9]+)/) || [0, 0];
+                  todo.weight = parseInt(weight, 10);
+                  todo.order = ix + todo.weight;
+                  return todo;
+                })
+                .sort((a, b) => a.order - b.order)
+                .map((i, ix, tasks) => {
+                  const pt = tasks[ix - 1];
+                  const nt = tasks[ix + 1];
+                  return `<form action="/${i.id}" style="display:inline" method="post">
                     <button>x</button>
                   </form>
+                  <div style="display: inline-block;vertical-align: middle; margin: 5px 0;">
+                    <form action="/order" method="post" style="margin: 0">
+                      <button${ pt ? '' : ' disabled'} style="font-size: 50%;">▲</button>
+                      <input type="hidden" name="set" value="${i.id}=${i.weight - 1}">
+                      <input type="hidden" name="set" value="${pt && pt.id}=${pt && (pt.weight + 1)}">
+                    </form>
+                    <form action="/order" method="post" style="margin: 0">
+                      <button${ nt ? '' : ' disabled'} style="font-size: 50%;">▼</button>
+                      <input type="hidden" name="set" value="${i.id}=${i.weight + 1}">
+                      <input type="hidden" name="set" value="${nt && nt.id}=${nt && (nt.weight - 1)}">
+                    </form>
+                  </div>
                   ${i.note ?
                     `<details style="display: inline;">
                       <summary>${i.title}</summary>
@@ -85,7 +106,7 @@ const getItems = accessToken =>
                       <button>Save</button>
                     </form>
                   </details>`
-                )
+                })
                 .join("<br>")
             );
           }
@@ -175,6 +196,36 @@ app.post("/edit/:id", async (req, res) => {
   )
 
   r.write(`access_token=${accessToken}&tasks=[${encodeURIComponent(JSON.stringify({id, note, title}))}]`)
+  r.end()
+})
+
+app.post("/order", async (req, res) => {
+  const data = await parseFormData(req);
+  const items = data.getAll("set").map(set => {
+    const [id, weight] = set.split("=");
+    return { id: parseInt(id, 10), tag: 'weight: ' + weight };
+  })
+  console.log('order', items)
+
+  const r = https.request(
+    {
+      ...URL.parse('https://api.toodledo.com/3/tasks/edit.php'),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    }, 
+    (r) => {
+      console.log(r.statusCode)
+      res.redirect('/')
+
+      collect(r).then(d => {
+        console.log(d)
+      })
+    }
+  )
+
+  r.write(`access_token=${accessToken}&tasks=${JSON.stringify(items)}`)
   r.end()
 })
 
