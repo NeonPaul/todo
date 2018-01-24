@@ -1,15 +1,28 @@
 const express = require("express");
 const https = require("https");
 const URL = require("url");
-const querystring = require("querystring")
+const querystring = require("querystring");
 const parseFormData = require("isomorphic-form/dist/server");
 const app = express();
-const { clientId, secret, port } = require("./env.js");
+try {
+  const { clientId, secret, port } = require("./env.js");
+} catch (e) {
+  console.log(
+    "Please create src/env.js using details from http://api.toodledo.com/3/account/doc_register.php"
+  );
+  throw e;
+}
 const state = (Math.random() * 10 ** 17).toString(16);
 const marked = require("marked");
-const Vue = require('vue');
+const Vue = require("vue");
 
-const tryRequire = f =>  { try { return require(f) } catch(e) { console.log(e) } }
+const tryRequire = f => {
+  try {
+    return require(f);
+  } catch (e) {
+    console.log(e);
+  }
+};
 
 const Item = ({ i, pt, nt }) => `
   <style>
@@ -24,70 +37,78 @@ const Item = ({ i, pt, nt }) => `
     </form>
     <div style="margin: 5px 0;">
       <form action="/order" method="post" style="margin: 0">
-        <button${ pt ? '' : ' disabled'} style="font-size: 50%;">▲</button>
+        <button${pt ? "" : " disabled"} style="font-size: 50%;">▲</button>
         <input type="hidden" name="set" value="${i.id}=${i.weight - 1}">
-        <input type="hidden" name="set" value="${pt && pt.id}=${pt && (pt.weight + 1)}">
+        <input type="hidden" name="set" value="${pt && pt.id}=${pt &&
+  pt.weight + 1}">
       </form>
       <form action="/order" method="post" style="margin: 0">
-        <button${ nt ? '' : ' disabled'} style="font-size: 50%;">▼</button>
+        <button${nt ? "" : " disabled"} style="font-size: 50%;">▼</button>
         <input type="hidden" name="set" value="${i.id}=${i.weight + 1}">
-        <input type="hidden" name="set" value="${nt && nt.id}=${nt && (nt.weight - 1)}">
+        <input type="hidden" name="set" value="${nt && nt.id}=${nt &&
+  nt.weight - 1}">
       </form>
     </div>
-    ${i.note ?
-      `<details>
+    ${
+      i.note
+        ? `<details>
         <summary>${i.title}</summary>
         ${marked(i.note)}
-      </details>` : i.title}
+      </details>`
+        : i.title
+    }
     <details>
       <summary>Edit</summary>
       <form action="/edit/${i.id}" method="post">
-        <input name=title value="${ i.title.replace(/"/g, '&quot;') }"><br>
+        <input name=title value="${i.title.replace(/"/g, "&quot;")}"><br>
         <textarea name=note>${i.note}</textarea><br>
         <button>Save</button>
       </form>
     </details>
-  </div>`
-const Items = ({ items }) => items.map(Item).join('<br>');
+  </div>`;
+const Items = ({ items }) => items.map(Item).join("<br>");
 
 const AddForm = () => `
 <form action="add" method="post">
   <input name="title" autofocus><br>
   <textarea name="note"></textarea><button>Ok</button>
 </form>
-`
+`;
 
 const provide = (css, Child) => {
   return new Vue({
     provide() {
       return {
         insertCss(...styles) {
-          styles.forEach(s => css.add(s))
+          styles.forEach(s => css.add(s));
         }
-      }
+      };
     },
     components: { Child },
-    template: '<Child />'
-  })
-}
+    template: "<Child />"
+  });
+};
 
-const cssData = css => `data:text/css,${encodeURIComponent(css)}`
+const cssData = css => `data:text/css,${encodeURIComponent(css)}`;
 
-const Index = ({ items, css }) => provide(css, ({
-  template: `<body>${AddForm()}${Items({ items })}</body>`,
-  inject: ['insertCss'],
-  created() {
-    this.insertCss(cssData(`
+const Index = ({ items, css }) =>
+  provide(css, {
+    template: `<body>${AddForm()}${Items({ items })}</body>`,
+    inject: ["insertCss"],
+    created() {
+      this.insertCss(
+        cssData(`
       body{
         font-family:sans-serif;
       }
-    `))
-  }
-}));
+    `)
+      );
+    }
+  });
 
-const renderer = require('vue-server-renderer').createRenderer()
+const renderer = require("vue-server-renderer").createRenderer();
 
-let accessToken = tryRequire('../token.json')
+let accessToken = tryRequire("../token.json");
 
 const collect = res =>
   new Promise(resolve => {
@@ -105,19 +126,20 @@ class Toodledo {
     this.clientId = clientId;
     this.secret = secret;
     this.accessToken = accessToken;
-    this.baseUrl = 'https://api.toodledo.com/3';
+    this.baseUrl = "https://api.toodledo.com/3";
   }
 
   getAuthUrl(scope, state) {
-    return `${this.baseUrl}/account/authorize.php?response_type=code&client_id=${this.clientId}&state=${state}&scope=${scope.join('%20')}`;
+    return `${
+      this.baseUrl
+    }/account/authorize.php?response_type=code&client_id=${
+      this.clientId
+    }&state=${state}&scope=${scope.join("%20")}`;
   }
 
   async request(options, config) {
-    return await new Promise((resolve) => {
-      const r = https.request(
-        options,
-        resolve
-      )
+    return await new Promise(resolve => {
+      const r = https.request(options, resolve);
 
       if (config) {
         config(r);
@@ -128,24 +150,29 @@ class Toodledo {
   }
 
   async get(url, config) {
-    const { protocol, host, pathname, query }  = URL.parse(this.baseUrl + url, true);
+    const { protocol, host, pathname, query } = URL.parse(
+      this.baseUrl + url,
+      true
+    );
 
     const options = {
       protocol,
       host,
       pathname,
-      search: '?' + querystring.stringify({
-        ...query,
-        access_token: this.accessToken
-      })
-    }
+      search:
+        "?" +
+        querystring.stringify({
+          ...query,
+          access_token: this.accessToken
+        })
+    };
 
     const res = await this.request(URL.format(options), config);
 
     const str = await collect(res);
 
     if (res.statusCode >= 400) {
-      throw new Error(str)
+      throw new Error(str);
     }
 
     try {
@@ -156,16 +183,19 @@ class Toodledo {
   }
 
   post(url, payload) {
-    return this.request({
-      ...URL.parse(this.baseUrl + url),
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+    return this.request(
+      {
+        ...URL.parse(this.baseUrl + url),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        }
+      },
+      r => {
+        const query = payload + "&access_token=" + this.accessToken;
+        r.write(query);
       }
-    }, r => {
-      const query = payload + '&access_token=' + this.accessToken
-      r.write(query);
-    })
+    );
   }
 
   async getAccessToken(code, state) {
@@ -175,51 +205,56 @@ class Toodledo {
         method: "POST",
         headers: {
           Authorization:
-            "Basic " + new Buffer(this.clientId + ":" + this.secret).toString("base64"),
+            "Basic " +
+            new Buffer(this.clientId + ":" + this.secret).toString("base64"),
           "Content-Type": "application/x-www-form-urlencoded"
         }
       },
       req => {
         req.write(`grant_type=authorization_code&code=${code}&vers=3&os=7`);
       }
-    )
+    );
 
-    const { access_token } = JSON.parse(await collect(res))
+    const { access_token } = JSON.parse(await collect(res));
 
     this.accessToken = access_token;
     return access_token;
   }
 
   async getTasks(fields) {
-    const tasks = await this.get('/tasks/get.php?fields=' + fields.join(','));
+    const tasks = await this.get("/tasks/get.php?fields=" + fields.join(","));
 
-    return tasks.filter(i => i.id && !i.completed && i.status == 0)
-    .map((todo, ix) => {
-      const [, weight] = todo.tag.match(/weight: (-?[0-9]+)/) || [0, 0];
-      todo.weight = parseInt(weight, 10);
-      todo.order = ix + todo.weight;
-      return todo;
-    })
-    .sort((a, b) => a.order - b.order)
-    .map((i, ix, tasks) => {
-      const pt = tasks[ix - 1];
-      const nt = tasks[ix + 1];
-      return ({ i, pt, nt });
-    })
+    return tasks
+      .filter(i => i.id && !i.completed && i.status == 0)
+      .map((todo, ix) => {
+        const [, weight] = todo.tag.match(/weight: (-?[0-9]+)/) || [0, 0];
+        todo.weight = parseInt(weight, 10);
+        todo.order = ix + todo.weight;
+        return todo;
+      })
+      .sort((a, b) => a.order - b.order)
+      .map((i, ix, tasks) => {
+        const pt = tasks[ix - 1];
+        const nt = tasks[ix + 1];
+        return { i, pt, nt };
+      });
   }
 }
 
 const toodledo = new Toodledo(clientId, secret, accessToken);
 
-const auth = toodledo.getAuthUrl(['basic','tasks','write'], state);
+const auth = toodledo.getAuthUrl(["basic", "tasks", "write"], state);
 
 const getAccessToken = async code => {
   const access_token = await toodledo.getAccessToken(code, state);
 
-  require('fs').writeFileSync(__dirname + '/../token.json', JSON.stringify(access_token))
-}
+  require("fs").writeFileSync(
+    __dirname + "/../token.json",
+    JSON.stringify(access_token)
+  );
+};
 
-const getItems = () => toodledo.getTasks(['note','status','tag'])
+const getItems = () => toodledo.getTasks(["note", "status", "tag"]);
 
 app.get("/", async (req, res, next) => {
   try {
@@ -231,9 +266,9 @@ app.get("/", async (req, res, next) => {
         return;
       }
 
-      await getAccessToken(code)
+      await getAccessToken(code);
 
-      res.redirect('/');
+      res.redirect("/");
       return;
     }
 
@@ -248,86 +283,96 @@ app.get("/", async (req, res, next) => {
   <head>
     <meta charset="utf-8">
     <title>Todo</title>
-    ${
-      Array.from(css).map(url => `<link rel=stylesheet href="${url}">`).join('\n')
-    }
+    ${Array.from(css)
+      .map(url => `<link rel=stylesheet href="${url}">`)
+      .join("\n")}
   </head>
   ${body}
-</html>`
+</html>`;
 
     res.send(html);
   } catch (e) {
-    next(e)
+    next(e);
   }
 });
 
 app.post("/add", async (req, res) => {
   const data = await parseFormData(req);
-  const title = data.get('title')
-  const note = data.get('note')
+  const title = data.get("title");
+  const note = data.get("note");
 
-  const r = await toodledo.post('/tasks/add.php', `tasks=[${encodeURIComponent(JSON.stringify({title, note}))}]`)
+  const r = await toodledo.post(
+    "/tasks/add.php",
+    `tasks=[${encodeURIComponent(JSON.stringify({ title, note }))}]`
+  );
 
-  console.log(r.statusCode)
-  res.redirect('/')
+  console.log(r.statusCode);
+  res.redirect("/");
 
   collect(r).then(d => {
-    console.log(d)
-  })
-})
+    console.log(d);
+  });
+});
 
 app.post("/edit/:id", async (req, res) => {
   const data = await parseFormData(req);
-  const title = data.get('title')
-  const note = data.get('note')
+  const title = data.get("title");
+  const note = data.get("note");
   const id = req.params.id;
 
-  const r = await toodledo.post('/tasks/edit.php', 
-    `tasks=[${encodeURIComponent(JSON.stringify({id, note, title}))}]`
-  )
+  const r = await toodledo.post(
+    "/tasks/edit.php",
+    `tasks=[${encodeURIComponent(JSON.stringify({ id, note, title }))}]`
+  );
 
-  console.log(r.statusCode)
-  res.redirect('/')
+  console.log(r.statusCode);
+  res.redirect("/");
 
   collect(r).then(d => {
-    console.log(d)
-  })
-})
+    console.log(d);
+  });
+});
 
 app.post("/order", async (req, res) => {
   const data = await parseFormData(req);
   const items = data.getAll("set").map(set => {
     const [id, weight] = set.split("=");
-    return { id: parseInt(id, 10), tag: 'weight: ' + weight };
-  })
-  console.log('order', items)
-  const r = await toodledo.post('/tasks/edit.php',`tasks=${JSON.stringify(items)}`);
+    return { id: parseInt(id, 10), tag: "weight: " + weight };
+  });
+  console.log("order", items);
+  const r = await toodledo.post(
+    "/tasks/edit.php",
+    `tasks=${JSON.stringify(items)}`
+  );
 
-  console.log(r.statusCode)
-  res.redirect('/')
+  console.log(r.statusCode);
+  res.redirect("/");
 
   collect(r).then(d => {
-    console.log(d)
-  })
-})
+    console.log(d);
+  });
+});
 
 app.post("/:id", async (req, res) => {
-  const r = await toodledo.post('/tasks/edit.php', `tasks=[{"id"%3A${req.params.id}%2C"completed":1}]`);
+  const r = await toodledo.post(
+    "/tasks/edit.php",
+    `tasks=[{"id"%3A${req.params.id}%2C"completed":1}]`
+  );
 
-  console.log(r.statusCode)
-  res.redirect('/')
+  console.log(r.statusCode);
+  res.redirect("/");
 
   collect(r).then(d => {
-    console.log(d)
-  })
-})
+    console.log(d);
+  });
+});
 
 app.use((err, req, res, next) => {
   let msg = {};
 
   try {
     msg = JSON.parse(err.message);
-  } catch(e) {}
+  } catch (e) {}
 
   if (msg.errorCode === 2) {
     accessToken = null;
@@ -336,8 +381,8 @@ app.use((err, req, res, next) => {
     return;
   }
 
-  res.send('<pre>' + err.toString() + '</pre>')
-})
+  res.send("<pre>" + err.toString() + "</pre>");
+});
 
 app.listen(port, () => {
   console.log("http://localhost:" + port);
