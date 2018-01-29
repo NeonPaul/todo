@@ -1,6 +1,7 @@
 const express = require("express");
 const https = require("https");
 const URL = require("url");
+const querystring = require("querystring")
 const parseFormData = require("isomorphic-form/dist/server");
 const app = express();
 const { clientId, secret, port } = require("./env.js");
@@ -9,9 +10,55 @@ const marked = require("marked");
 
 const tryRequire = f =>  { try { return require(f) } catch(e) { console.log(e) } }
 
-let accessToken = tryRequire('../token.json')
+const Item = ({ i, pt, nt }) => `
+  <style>
+    .Item {
+      display: flex;
+      align-items: flex-start;
+    }
+  </style>
+  <div class="Item">
+    <form action="/${i.id}" method="post">
+      <button>x</button>
+    </form>
+    <div style="margin: 5px 0;">
+      <form action="/order" method="post" style="margin: 0">
+        <button${ pt ? '' : ' disabled'} style="font-size: 50%;">▲</button>
+        <input type="hidden" name="set" value="${i.id}=${i.weight - 1}">
+        <input type="hidden" name="set" value="${pt && pt.id}=${pt && (pt.weight + 1)}">
+      </form>
+      <form action="/order" method="post" style="margin: 0">
+        <button${ nt ? '' : ' disabled'} style="font-size: 50%;">▼</button>
+        <input type="hidden" name="set" value="${i.id}=${i.weight + 1}">
+        <input type="hidden" name="set" value="${nt && nt.id}=${nt && (nt.weight - 1)}">
+      </form>
+    </div>
+    ${i.note ?
+      `<details>
+        <summary>${i.title}</summary>
+        ${marked(i.note)}
+      </details>` : i.title}
+    <details>
+      <summary>Edit</summary>
+      <form action="/edit/${i.id}" method="post">
+        <input name=title value="${ i.title.replace(/"/g, '&quot;') }"><br>
+        <textarea name=note>${i.note}</textarea><br>
+        <button>Save</button>
+      </form>
+    </details>
+  </div>`
+const Items = ({ items }) => items.map(Item).join('<br>');
 
-const auth = `https://api.toodledo.com/3/account/authorize.php?response_type=code&client_id=${clientId}&state=${state}&scope=basic%20tasks%20write`;
+const AddForm = () => `
+<form action="add" method="post">
+  <input name="title" autofocus><br>
+  <textarea name="note"></textarea><button>Ok</button>
+</form>
+`
+
+const Index = ({ items }) => `${AddForm()}${Items({ items })}`;
+
+let accessToken = tryRequire('../token.json')
 
 const collect = res =>
   new Promise(resolve => {
@@ -24,95 +71,124 @@ const collect = res =>
     });
   });
 
-const getAccessToken = code =>
-  new Promise((resolve, reject) => {
-    const r = https.request(
+class Toodledo {
+  constructor(clientId, secret, accessToken) {
+    this.clientId = clientId;
+    this.secret = secret;
+    this.accessToken = accessToken;
+    this.baseUrl = 'https://api.toodledo.com/3';
+  }
+
+  getAuthUrl(scope, state) {
+    return `${this.baseUrl}/account/authorize.php?response_type=code&client_id=${this.clientId}&state=${state}&scope=${scope.join('%20')}`;
+  }
+
+  async request(options, config) {
+    return await new Promise((resolve) => {
+      const r = https.request(
+        options,
+        resolve
+      )
+
+      if (config) {
+        config(r);
+      }
+
+      r.end();
+    });
+  }
+
+  async get(url, config) {
+    const { protocol, host, pathname, query }  = URL.parse(this.baseUrl + url, true);
+
+    const options = {
+      protocol,
+      host,
+      pathname,
+      search: '?' + querystring.stringify({
+        ...query,
+        access_token: this.accessToken
+      })
+    }
+
+    const res = await this.request(URL.format(options), config);
+
+    const str = await collect(res);
+
+    if (res.statusCode >= 400) {
+      throw new Error(str)
+    }
+
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      throw new Error(`Couldn't parse JSON: ${str}`);
+    }
+  }
+
+  post(url, payload) {
+    return this.request({
+      ...URL.parse(this.baseUrl + url),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    }, r => {
+      const query = payload + '&access_token=' + this.accessToken
+      r.write(query);
+    })
+  }
+
+  async getAccessToken(code, state) {
+    const { access_token } = await this.request(
       {
-        ...URL.parse("https://api.toodledo.com/3/account/token.php"),
+        ...URL.parse(this.baseUrl + "/account/token.php"),
         method: "POST",
         headers: {
           Authorization:
-            "Basic " + new Buffer(clientId + ":" + secret).toString("base64"),
+            "Basic " + new Buffer(this.clientId + ":" + this.secret).toString("base64"),
           "Content-Type": "application/x-www-form-urlencoded"
         }
       },
-      async res => {
-        try {
-          const txt = await collect(res)
-          console.log(txt)
-          const { access_token } = JSON.parse(txt);
-          require('fs').writeFileSync(__dirname + '/../token.json', JSON.stringify(access_token))
-          resolve(access_token)
-        } catch (e) {
-          reject(e)
-        }
+      req => {
+        req.write(`grant_type=authorization_code&code=${code}&vers=3&os=7`);
       }
     )
 
-    r.write(`grant_type=authorization_code&code=${code}&vers=3&os=7`);
-    r.end();
-  })
+    this.accessToken = access_token;
+    return access_token;
+  }
 
-const getItems = accessToken =>
-  new Promise((resolve, reject) => {
-        https.get(
-          `https://api.toodledo.com/3/tasks/get.php?access_token=${accessToken}&fields=note,status,tag`,
-          async res => {
-            const str = await collect(res);
+  async getTasks(fields) {
+    const tasks = await this.get('/tasks/get.php?fields=' + fields.join(','));
 
-            if (res.statusCode >= 400) {
-              reject(new Error(str))
-              return
-            }
+    return tasks.filter(i => i.id && !i.completed && i.status == 0)
+    .map((todo, ix) => {
+      const [, weight] = todo.tag.match(/weight: (-?[0-9]+)/) || [0, 0];
+      todo.weight = parseInt(weight, 10);
+      todo.order = ix + todo.weight;
+      return todo;
+    })
+    .sort((a, b) => a.order - b.order)
+    .map((i, ix, tasks) => {
+      const pt = tasks[ix - 1];
+      const nt = tasks[ix + 1];
+      return ({ i, pt, nt });
+    })
+  }
+}
 
-            resolve(
-              JSON.parse(str)
-                .filter(i => i.id && !i.completed && i.status == 0)
-                .map((todo, ix) => {
-                  const [, weight] = todo.tag.match(/weight: (-?[0-9]+)/) || [0, 0];
-                  todo.weight = parseInt(weight, 10);
-                  todo.order = ix + todo.weight;
-                  return todo;
-                })
-                .sort((a, b) => a.order - b.order)
-                .map((i, ix, tasks) => {
-                  const pt = tasks[ix - 1];
-                  const nt = tasks[ix + 1];
-                  return `<form action="/${i.id}" style="display:inline" method="post">
-                    <button>x</button>
-                  </form>
-                  <div style="display: inline-block;vertical-align: middle; margin: 5px 0;">
-                    <form action="/order" method="post" style="margin: 0">
-                      <button${ pt ? '' : ' disabled'} style="font-size: 50%;">▲</button>
-                      <input type="hidden" name="set" value="${i.id}=${i.weight - 1}">
-                      <input type="hidden" name="set" value="${pt && pt.id}=${pt && (pt.weight + 1)}">
-                    </form>
-                    <form action="/order" method="post" style="margin: 0">
-                      <button${ nt ? '' : ' disabled'} style="font-size: 50%;">▼</button>
-                      <input type="hidden" name="set" value="${i.id}=${i.weight + 1}">
-                      <input type="hidden" name="set" value="${nt && nt.id}=${nt && (nt.weight - 1)}">
-                    </form>
-                  </div>
-                  ${i.note ?
-                    `<details style="display: inline;">
-                      <summary>${i.title}</summary>
-                      ${marked(i.note)}
-                    </details>` : i.title}
-                  <details style="display: inline">
-                    <summary>Edit</summary>
-                    <form action="/edit/${i.id}" method="post">
-                      <input name=title value="${ i.title.replace(/"/g, '&quot;') }"><br>
-                      <textarea name=note>${i.note}</textarea><br>
-                      <button>Save</button>
-                    </form>
-                  </details>`
-                })
-                .join("<br>")
-            );
-          }
-        );
-      }
-    );
+const toodledo = new Toodledo(clientId, secret, accessToken);
+
+const auth = toodledo.getAuthUrl(['basic','tasks','write'], state);
+
+const getAccessToken = async code => {
+  const access_token = await toodledo.getAccessToken(code, state);
+
+  require('fs').writeFileSync(__dirname + '/../token.json', JSON.stringify(access_token))
+}
+
+const getItems = () => toodledo.getTasks(['note','status','tag'])
 
 app.get("/", async (req, res, next) => {
   try {
@@ -124,21 +200,13 @@ app.get("/", async (req, res, next) => {
         return;
       }
 
-      console.log(code)
-
       accessToken = await getAccessToken(code)
 
-      console.log(accessToken)
       res.redirect('/');
       return;
     }
 
-    res.send(`
-    <form action="add" method="post">
-      <input name="title"><button>Ok</button><br>
-      <textarea name="note"></textarea>
-    </form>
-    ` + await getItems(accessToken));
+    res.send(Index({ items: await getItems() }));
   } catch (e) {
     next(e)
   }
@@ -149,26 +217,14 @@ app.post("/add", async (req, res) => {
   const title = data.get('title')
   const note = data.get('note')
 
-  const r = https.request(
-    {
-      ...URL.parse('https://api.toodledo.com/3/tasks/add.php'),
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    }, 
-    (r) => {
-      console.log(r.statusCode)
-      res.redirect('/')
+  const r = await toodledo.post('/tasks/add.php', `tasks=[${encodeURIComponent(JSON.stringify({title, note}))}]`)
 
-      collect(r).then(d => {
-        console.log(d)
-      })
-    }
-  )
+  console.log(r.statusCode)
+  res.redirect('/')
 
-  r.write(`access_token=${accessToken}&tasks=[${encodeURIComponent(JSON.stringify({title, note}))}]`)
-  r.end()
+  collect(r).then(d => {
+    console.log(d)
+  })
 })
 
 app.post("/edit/:id", async (req, res) => {
@@ -177,26 +233,16 @@ app.post("/edit/:id", async (req, res) => {
   const note = data.get('note')
   const id = req.params.id;
 
-  const r = https.request(
-    {
-      ...URL.parse('https://api.toodledo.com/3/tasks/edit.php'),
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    }, 
-    (r) => {
-      console.log(r.statusCode)
-      res.redirect('/')
-
-      collect(r).then(d => {
-        console.log(d)
-      })
-    }
+  const r = await toodledo.post('/tasks/edit.php', 
+    `tasks=[${encodeURIComponent(JSON.stringify({id, note, title}))}]`
   )
 
-  r.write(`access_token=${accessToken}&tasks=[${encodeURIComponent(JSON.stringify({id, note, title}))}]`)
-  r.end()
+  console.log(r.statusCode)
+  res.redirect('/')
+
+  collect(r).then(d => {
+    console.log(d)
+  })
 })
 
 app.post("/order", async (req, res) => {
@@ -207,26 +253,14 @@ app.post("/order", async (req, res) => {
   })
   console.log('order', items)
 
-  const r = https.request(
-    {
-      ...URL.parse('https://api.toodledo.com/3/tasks/edit.php'),
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    }, 
-    (r) => {
-      console.log(r.statusCode)
-      res.redirect('/')
+  const r = await toodledo.post('/tasks/edit.php',`tasks=${JSON.stringify(items)}`);
 
-      collect(r).then(d => {
-        console.log(d)
-      })
-    }
-  )
+  console.log(r.statusCode)
+  res.redirect('/')
 
-  r.write(`access_token=${accessToken}&tasks=${JSON.stringify(items)}`)
-  r.end()
+  collect(r).then(d => {
+    console.log(d)
+  })
 })
 
 app.post("/:id", async (req, res) => {
@@ -263,6 +297,7 @@ app.use((err, req, res, next) => {
     accessToken = null;
 
     res.redirect(req.originalUrl);
+    return;
   }
 
   res.send('<pre>' + err.toString() + '</pre>')
