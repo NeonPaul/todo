@@ -140,7 +140,7 @@ class Toodledo {
   }
 
   async getAccessToken(code, state) {
-    const { access_token } = await this.request(
+    const res = await this.request(
       {
         ...URL.parse(this.baseUrl + "/account/token.php"),
         method: "POST",
@@ -154,6 +154,8 @@ class Toodledo {
         req.write(`grant_type=authorization_code&code=${code}&vers=3&os=7`);
       }
     )
+
+    const { access_token } = JSON.parse(await collect(res))
 
     this.accessToken = access_token;
     return access_token;
@@ -192,7 +194,7 @@ const getItems = () => toodledo.getTasks(['note','status','tag'])
 
 app.get("/", async (req, res, next) => {
   try {
-    if (!accessToken) {
+    if (!toodledo.accessToken) {
       const { code } = req.query;
 
       if (!code) {
@@ -200,7 +202,7 @@ app.get("/", async (req, res, next) => {
         return;
       }
 
-      accessToken = await getAccessToken(code)
+      await getAccessToken(code)
 
       res.redirect('/');
       return;
@@ -264,26 +266,14 @@ app.post("/order", async (req, res) => {
 })
 
 app.post("/:id", async (req, res) => {
-  const r = https.request(
-    {
-      ...URL.parse('https://api.toodledo.com/3/tasks/edit.php'),
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    }, 
-    (r) => {
-      console.log(r.statusCode)
-      res.redirect('/')
+  const r = await toodledo.post('/tasks/edit.php', `tasks=[{"id"%3A${req.params.id}%2C"completed":1}]`);
 
-      collect(r).then(d => {
-        console.log(d)
-      })
-    }
-  )
+  console.log(r.statusCode)
+  res.redirect('/')
 
-  r.write(`access_token=${accessToken}&tasks=[{"id"%3A${req.params.id}%2C"completed":1}]`)
-  r.end()
+  collect(r).then(d => {
+    console.log(d)
+  })
 })
 
 app.use((err, req, res, next) => {
