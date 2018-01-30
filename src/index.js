@@ -7,6 +7,7 @@ const app = express();
 const { clientId, secret, port } = require("./env.js");
 const state = (Math.random() * 10 ** 17).toString(16);
 const marked = require("marked");
+const Vue = require('vue')
 
 const tryRequire = f =>  { try { return require(f) } catch(e) { console.log(e) } }
 
@@ -56,7 +57,29 @@ const AddForm = () => `
 </form>
 `
 
-const Index = ({ items }) => `${AddForm()}${Items({ items })}`;
+const provide = (css, Child) => {
+  return new Vue({
+    provide() {
+      return {
+        insertCss(...styles) {
+          styles.forEach(s => css.add(s))
+        }
+      }
+    },
+    components: { Child },
+    template: '<Child />'
+  })
+}
+
+const Index = ({ items, css }) => provide(css, ({
+  template: `<body>${AddForm()}${Items({ items })}</body>`,
+  inject: ['insertCss'],
+  created() {
+    this.insertCss('data:text/css,body{font-family:sans-serif;}')
+  }
+}));
+
+const renderer = require('vue-server-renderer').createRenderer()
 
 let accessToken = tryRequire('../token.json')
 
@@ -208,7 +231,25 @@ app.get("/", async (req, res, next) => {
       return;
     }
 
-    res.send(Index({ items: await getItems() }));
+    const css = new Set();
+
+    const index = Index({ items: await getItems(), css });
+
+    const body = await renderer.renderToString(index);
+
+    const html = `<!doctype html -->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Todo</title>
+    ${
+      Array.from(css).map(url => `<link rel=stylesheet href="${url}">`).join('\n')
+    }
+  </head>
+  ${body}
+</html>`
+
+    res.send(html);
   } catch (e) {
     next(e)
   }
@@ -254,7 +295,6 @@ app.post("/order", async (req, res) => {
     return { id: parseInt(id, 10), tag: 'weight: ' + weight };
   })
   console.log('order', items)
-
   const r = await toodledo.post('/tasks/edit.php',`tasks=${JSON.stringify(items)}`);
 
   console.log(r.statusCode)
