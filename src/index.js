@@ -7,7 +7,7 @@ const app = express();
 const { clientId, secret, port } = require("./env.js");
 const state = (Math.random() * 10 ** 17).toString(16);
 const marked = require("marked");
-const Vue = require('vue')
+const Vue = require('vue');
 
 const tryRequire = f =>  { try { return require(f) } catch(e) { console.log(e) } }
 
@@ -71,11 +71,17 @@ const provide = (css, Child) => {
   })
 }
 
+const cssData = css => `data:text/css,${encodeURIComponent(css)}`
+
 const Index = ({ items, css }) => provide(css, ({
   template: `<body>${AddForm()}${Items({ items })}</body>`,
   inject: ['insertCss'],
   created() {
-    this.insertCss('data:text/css,body{font-family:sans-serif;}')
+    this.insertCss(cssData(`
+      body{
+        font-family:sans-serif;
+      }
+    `))
   }
 }));
 
