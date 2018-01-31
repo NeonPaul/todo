@@ -5,7 +5,7 @@ const querystring = require("querystring");
 const parseFormData = require("isomorphic-form/dist/server");
 const app = express();
 try {
-  const { clientId, secret, port } = require("./env.js");
+  var { clientId, secret, port } = require("./env.js");
 } catch (e) {
   console.log(
     "Please create src/env.js using details from http://api.toodledo.com/3/account/doc_register.php"
@@ -122,11 +122,42 @@ const collect = res =>
   });
 
 class Toodledo {
-  constructor(clientId, secret, accessToken) {
+  constructor(clientId, secret, auth = {}) {
     this.clientId = clientId;
     this.secret = secret;
-    this.accessToken = accessToken;
     this.baseUrl = "https://api.toodledo.com/3";
+
+    this.setAuth(auth);
+  }
+
+  onAuth(cb) {
+    this.authCb = cb;
+  }
+
+  setAuth(auth) {
+    if (!auth.expiryDate) {
+      return;
+    }
+
+    const authDate = new Date(auth.expiryDate);
+    this.auth = auth;
+
+    const now = new Date();
+
+    if (authDate <= now) {
+      this.refreshAccessToken();
+    } else {
+      const expiresIn = authDate - now;
+      setTimeout(() => this.refreshAccessToken(), expiresIn);
+    }
+
+    if (this.authCb) {
+      this.authCb(auth);
+    }
+  }
+
+  get accessToken() {
+    return this.auth && this.auth.accessToken;
   }
 
   getAuthUrl(scope, state) {
@@ -198,7 +229,7 @@ class Toodledo {
     );
   }
 
-  async getAccessToken(code, state) {
+  async requestToken(options) {
     const res = await this.request(
       {
         ...URL.parse(this.baseUrl + "/account/token.php"),
@@ -211,14 +242,41 @@ class Toodledo {
         }
       },
       req => {
-        req.write(`grant_type=authorization_code&code=${code}&vers=3&os=7`);
+        req.write(querystring.stringify(options));
       }
     );
 
-    const { access_token } = JSON.parse(await collect(res));
+    const {
+      access_token: accessToken,
+      expires_in: expiresIn,
+      refresh_token: refreshToken
+    } = JSON.parse(await collect(res));
 
-    this.accessToken = access_token;
-    return access_token;
+    const expiryDate = new Date();
+    expiryDate.setSeconds(expiryDate.getSeconds() + expiresIn);
+
+    this.setAuth({
+      accessToken,
+      expiryDate,
+      refreshToken
+    });
+  }
+
+  getAccessToken(code, state) {
+    return this.requestToken({ grant_type: "authorization_code", code });
+  }
+
+  refreshAccessToken() {
+    const refreshToken = this.auth && this.auth.refreshToken;
+
+    if (!refreshToken) {
+      throw new Error("No refresh token");
+    }
+
+    return this.requestToken({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken
+    });
   }
 
   async getTasks(fields) {
@@ -243,16 +301,16 @@ class Toodledo {
 
 const toodledo = new Toodledo(clientId, secret, accessToken);
 
-const auth = toodledo.getAuthUrl(["basic", "tasks", "write"], state);
-
-const getAccessToken = async code => {
-  const access_token = await toodledo.getAccessToken(code, state);
-
+toodledo.onAuth(token => {
   require("fs").writeFileSync(
     __dirname + "/../token.json",
-    JSON.stringify(access_token)
+    JSON.stringify(token)
   );
-};
+});
+
+const auth = toodledo.getAuthUrl(["basic", "tasks", "write"], state);
+
+const getAccessToken = code => toodledo.getAccessToken(code, state);
 
 const getItems = () => toodledo.getTasks(["note", "status", "tag"]);
 
@@ -381,7 +439,7 @@ app.use((err, req, res, next) => {
     return;
   }
 
-  res.send("<pre>" + err.toString() + "</pre>");
+  res.send("<pre>" + err.stack + "</pre>");
 });
 
 app.listen(port, () => {
