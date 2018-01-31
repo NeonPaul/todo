@@ -62,6 +62,17 @@ const Item = ({ i, pt, nt }) => `
       <form action="/edit/${i.id}" method="post">
         <input name=title value="${i.title.replace(/"/g, "&quot;")}"><br>
         <textarea name=note>${i.note}</textarea><br>
+        <select name="status">
+          <option value=${status.NEXT}${
+  i.status === status.NEXT ? " selected" : ""
+}>Next</option>
+          <option value=${status.SOMEDAY}${
+  i.status === status.SOMEDAY ? " selected" : ""
+}>Someday</option>
+          <option value=${status.WAITING}${
+  i.status === status.WAITING ? " selected" : ""
+}>Waiting</option>
+        </select><br>
         <button>Save</button>
       </form>
     </details>
@@ -93,7 +104,11 @@ const cssData = css => `data:text/css,${encodeURIComponent(css)}`;
 
 const Index = ({ items, css }) =>
   provide(css, {
-    template: `<body>${AddForm()}${Items({ items })}</body>`,
+    template: `<body>
+      <a href="/">Next</a> |
+      <a href="?status=${status.SOMEDAY}">Someday</a> |
+      <a href="?status=${status.WAITING}">Waiting</a>
+    ${AddForm()}${Items({ items })}</body>`,
     inject: ["insertCss"],
     created() {
       this.insertCss(
@@ -120,6 +135,13 @@ const collect = res =>
       resolve(str);
     });
   });
+
+const status = {
+  NONE: 0,
+  NEXT: 0,
+  WAITING: 5,
+  SOMEDAY: 8
+};
 
 class Toodledo {
   constructor(clientId, secret, auth = {}) {
@@ -279,11 +301,11 @@ class Toodledo {
     });
   }
 
-  async getTasks(fields) {
+  async getTasks(fields, status = 0) {
     const tasks = await this.get("/tasks/get.php?fields=" + fields.join(","));
 
     return tasks
-      .filter(i => i.id && !i.completed && i.status == 0)
+      .filter(i => i.id && !i.completed && i.status == status)
       .map((todo, ix) => {
         const [, weight] = todo.tag.match(/weight: (-?[0-9]+)/) || [0, 0];
         todo.weight = parseInt(weight, 10);
@@ -312,7 +334,7 @@ const auth = toodledo.getAuthUrl(["basic", "tasks", "write"], state);
 
 const getAccessToken = code => toodledo.getAccessToken(code, state);
 
-const getItems = () => toodledo.getTasks(["note", "status", "tag"]);
+const getItems = s => toodledo.getTasks(["note", "status", "tag"], s);
 
 app.get("/", async (req, res, next) => {
   try {
@@ -332,7 +354,7 @@ app.get("/", async (req, res, next) => {
 
     const css = new Set();
 
-    const index = Index({ items: await getItems(), css });
+    const index = Index({ items: await getItems(req.query.status || 0), css });
 
     const body = await renderer.renderToString(index);
 
@@ -376,11 +398,12 @@ app.post("/edit/:id", async (req, res) => {
   const data = await parseFormData(req);
   const title = data.get("title");
   const note = data.get("note");
+  const status = data.get("status");
   const id = req.params.id;
 
   const r = await toodledo.post(
     "/tasks/edit.php",
-    `tasks=[${encodeURIComponent(JSON.stringify({ id, note, title }))}]`
+    `tasks=[${encodeURIComponent(JSON.stringify({ id, note, title, status }))}]`
   );
 
   console.log(r.statusCode);
