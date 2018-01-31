@@ -59,7 +59,7 @@ const Item = ({ i, pt, nt }) => `
     }
     <details>
       <summary>Edit</summary>
-      <form action="/edit/${i.id}" method="post">
+      <form action="/edit/${i.id}" method="post" autocomplete="off">
         <input name=title value="${i.title.replace(/"/g, "&quot;")}"><br>
         <textarea name=note>${i.note}</textarea><br>
         <select name="status">
@@ -80,7 +80,7 @@ const Item = ({ i, pt, nt }) => `
 const Items = ({ items }) => items.map(Item).join("<br>");
 
 const AddForm = () => `
-<form action="add" method="post">
+<form action="add" method="post" autocomplete="off">
   <input name="title" autofocus><br>
   <textarea name="note"></textarea><button>Ok</button>
 </form>
