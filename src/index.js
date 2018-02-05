@@ -9,14 +9,28 @@ const Vue = require("vue");
 const cookie = require('cookie');
 
 const app = express();
+
 try {
-  var { clientId, secret, port, jweKey } = require("./env.js");
+  const { clientId, secret, port, jweKey } = require("./env.js");
+  var env = {
+    CLIENT_ID: clientId,
+    SECRET: secret,
+    PORT: port,
+    JWE_KEY: jweKey,
+    ...process.env
+  };
 } catch (e) {
-  console.log(
+  var env = process.env;
+}
+
+const { CLIENT_ID, SECRET, PORT, JWE_KEY } = env;
+
+if (!CLIENT_ID || !SECRET) {
+  throw new Error(
     "Please create src/env.js using details from http://api.toodledo.com/3/account/doc_register.php"
   );
-  throw e;
 }
+
 const state = (Math.random() * 10 ** 17).toString(16);
 
 let key;
@@ -150,21 +164,23 @@ const status = {
 };
 
 class Toodledo {
-  constructor(clientId, secret, auth = {}) {
+  constructor(clientId, secret, auth) {
     this.clientId = clientId;
     this.secret = secret;
     this.baseUrl = "https://api.toodledo.com/3";
 
-    this.setAuth(auth);
+    if (auth && auth.expiryDate) {
+      this.setAuth(auth);
+    }
   }
 
   onAuth(cb) {
     this.authCb = cb;
   }
 
-  setAuth(auth) {
+  async setAuth(auth) {
     if (!auth.expiryDate) {
-      return;
+      throw new Error('No expiry date set');
     }
 
     const authDate = new Date(auth.expiryDate);
@@ -174,13 +190,10 @@ class Toodledo {
 
     if (authDate <= now) {
       this.refreshAccessToken();
-    } else {
-      const expiresIn = authDate - now;
-      setTimeout(() => this.refreshAccessToken(), expiresIn);
     }
 
     if (this.authCb) {
-      this.authCb(auth);
+      await this.authCb(auth);
     }
   }
 
@@ -277,13 +290,19 @@ class Toodledo {
     const {
       access_token: accessToken,
       expires_in: expiresIn,
-      refresh_token: refreshToken
+      refresh_token: refreshToken,
+      errorCode,
+      errorDesc
     } = JSON.parse(await collect(res));
+
+    if (errorCode) {
+      throw new Error(`${errorCode}: ${errorDesc}`)
+    }
 
     const expiryDate = new Date();
     expiryDate.setSeconds(expiryDate.getSeconds() + expiresIn);
 
-    this.setAuth({
+    await this.setAuth({
       accessToken,
       expiryDate,
       refreshToken
@@ -344,13 +363,14 @@ app.use(async (req, res, next) => {
 
     if(enc) {
       try {
-      const c = JSON.parse(enc);
+        const c = JSON.parse(enc);
 
-      const result = await jose.JWE.createDecrypt(key).decrypt(c);
+        const result = await jose.JWE.createDecrypt(key).decrypt(c);
 
-      auth = JSON.parse(result.plaintext);
+        auth = JSON.parse(result.plaintext);
+
       } catch(e) {
-        console.log(e)
+        console.log(e.stack)
       }
     }
 
@@ -457,7 +477,7 @@ app.post("/order", async (req, res) => {
     const [id, weight] = set.split("=");
     return { id: parseInt(id, 10), tag: "weight: " + weight };
   });
-  console.log("order", items);
+
   const r = await req.toodledo.post(
     "/tasks/edit.php",
     `tasks=${JSON.stringify(items)}`
