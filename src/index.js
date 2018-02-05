@@ -97,14 +97,23 @@ const Item = ({ i, pt, nt }) => `
       </form>
     </details>
   </div>`;
-const Items = ({ items }) => items.map(Item).join("<br>");
+const Items = {
+  props: ['items'],
+  render(h) {
+    return h('div', {
+      domProps: {
+        innerHTML: this.items.map(Item).join("<br>")
+      }
+    })
+  }
+}
 
-const AddForm = () => `
+const AddForm = { template: `
 <form action="add" method="post" autocomplete="off">
   <input name="title" autofocus><br>
   <textarea name="note"></textarea><button>Ok</button>
 </form>
-`;
+` };
 
 const provide = (css, Child) => {
   return new Vue({
@@ -124,11 +133,20 @@ const cssData = css => `data:text/css,${encodeURIComponent(css)}`;
 
 const Index = ({ items, css }) =>
   provide(css, {
+    components: {
+      AddForm,
+      Items
+    },
+    data(){
+      return {
+        items
+      }
+    },
     template: `<body>
       <a href="/">Next</a> |
       <a href="?status=${status.SOMEDAY}">Someday</a> |
       <a href="?status=${status.WAITING}">Waiting</a>
-    ${AddForm()}${Items({ items })}</body>`,
+    <Add-Form /><Items :items="items" /></body>`,
     inject: ["insertCss"],
     created() {
       this.insertCss(
