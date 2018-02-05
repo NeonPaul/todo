@@ -35,7 +35,7 @@ const state = (Math.random() * 10 ** 17).toString(16);
 
 let key;
 
-jose.JWK.asKey(jweKey).then(k => { key = k });
+jose.JWK.asKey(JWE_KEY).then(k => { key = k });
 
 const tryRequire = f => {
   try {
@@ -379,7 +379,7 @@ app.use(async (req, res, next) => {
       setCookie(auth)
     }
 
-    const toodledo = new Toodledo(clientId, secret, auth);
+    const toodledo = new Toodledo(CLIENT_ID, SECRET, auth);
 
     toodledo.onAuth(setCookie);
 
@@ -522,6 +522,6 @@ app.use((err, req, res, next) => {
   res.send("<pre>" + err.stack + "</pre>");
 });
 
-app.listen(port, () => {
-  console.log("http://localhost:" + port);
+app.listen(PORT, () => {
+  console.log("http://localhost:" + PORT);
 });
