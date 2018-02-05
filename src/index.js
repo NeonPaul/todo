@@ -186,6 +186,7 @@ class Toodledo {
     this.clientId = clientId;
     this.secret = secret;
     this.baseUrl = "https://api.toodledo.com/3";
+    this.reAuth = false;
 
     if (auth && auth.expiryDate) {
       this.setAuth(auth);
@@ -194,6 +195,10 @@ class Toodledo {
 
   onAuth(cb) {
     this.authCb = cb;
+
+    if(this.reAuth) {
+      cb(this.auth);
+    }
   }
 
   async setAuth(auth) {
@@ -207,7 +212,8 @@ class Toodledo {
     const now = new Date();
 
     if (authDate <= now) {
-      this.refreshAccessToken();
+      this.reAuth = true;
+      await this.refreshAccessToken();
     }
 
     if (this.authCb) {
