@@ -182,26 +182,25 @@ const status = {
 };
 
 class Toodledo {
-  constructor(clientId, secret, auth) {
+  constructor(clientId, secret) {
     this.clientId = clientId;
     this.secret = secret;
     this.baseUrl = "https://api.toodledo.com/3";
-    this.reAuth = false;
-
-    if (auth && auth.expiryDate) {
-      this.setAuth(auth);
-    }
   }
 
   onAuth(cb) {
     this.authCb = cb;
-
-    if(this.reAuth) {
-      cb(this.auth);
-    }
   }
 
-  async setAuth(auth) {
+  authorise(auth, cb) {
+    if(cb) {
+      this.onAuth(cb);
+    }
+
+    return this.setAuth(auth, true)
+  }
+
+  async setAuth(auth, init) {
     if (!auth.expiryDate) {
       throw new Error('No expiry date set');
     }
@@ -214,9 +213,7 @@ class Toodledo {
     if (authDate <= now) {
       this.reAuth = true;
       await this.refreshAccessToken();
-    }
-
-    if (this.authCb) {
+    } else if (this.authCb && !init) {
       await this.authCb(auth);
     }
   }
@@ -403,9 +400,9 @@ app.use(async (req, res, next) => {
       setCookie(auth)
     }
 
-    const toodledo = new Toodledo(CLIENT_ID, SECRET, auth);
+    const toodledo = new Toodledo(CLIENT_ID, SECRET);
 
-    toodledo.onAuth(setCookie);
+    await toodledo.authorise(auth, setCookie);
 
     req.toodledo = toodledo;
 
