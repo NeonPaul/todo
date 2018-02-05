@@ -3,9 +3,14 @@ const https = require("https");
 const URL = require("url");
 const querystring = require("querystring");
 const parseFormData = require("isomorphic-form/dist/server");
+const jose = require('node-jose');
+const marked = require("marked");
+const Vue = require("vue");
+const cookie = require('cookie');
+
 const app = express();
 try {
-  var { clientId, secret, port } = require("./env.js");
+  var { clientId, secret, port, jweKey } = require("./env.js");
 } catch (e) {
   console.log(
     "Please create src/env.js using details from http://api.toodledo.com/3/account/doc_register.php"
@@ -13,14 +18,15 @@ try {
   throw e;
 }
 const state = (Math.random() * 10 ** 17).toString(16);
-const marked = require("marked");
-const Vue = require("vue");
+
+let key;
+
+jose.JWK.asKey(jweKey).then(k => { key = k });
 
 const tryRequire = f => {
   try {
     return require(f);
   } catch (e) {
-    console.log(e);
   }
 };
 
@@ -321,38 +327,69 @@ class Toodledo {
   }
 }
 
-const toodledo = new Toodledo(clientId, secret, accessToken);
+const cookieKey = 'auth';
 
-toodledo.onAuth(token => {
-  require("fs").writeFileSync(
-    __dirname + "/../token.json",
-    JSON.stringify(token)
-  );
-});
+app.use(async (req, res, next) => {
+  try {
+    const enc = cookie.parse(req.headers.cookie || '')[cookieKey];
+    let auth;
 
-const auth = toodledo.getAuthUrl(["basic", "tasks", "write"], state);
+    const setCookie = async (auth) => {
+      const encAuth = JSON.stringify(await jose.JWE.createEncrypt(key).update(JSON.stringify(auth)).final())
 
-const getAccessToken = code => toodledo.getAccessToken(code, state);
+      res.setHeader('Set-Cookie', cookie.serialize(cookieKey, encAuth, {
+        maxAge: 60 * 60 * 24 * 30
+      }));
+    }
 
-const getItems = s => toodledo.getTasks(["note", "status", "tag"], s);
+    if(enc) {
+      try {
+      const c = JSON.parse(enc);
+
+      const result = await jose.JWE.createDecrypt(key).decrypt(c);
+
+      auth = JSON.parse(result.plaintext);
+      } catch(e) {
+        console.log(e)
+      }
+    }
+
+    if (!auth) {
+      auth = accessToken;
+      setCookie(auth)
+    }
+
+    const toodledo = new Toodledo(clientId, secret, auth);
+
+    toodledo.onAuth(setCookie);
+
+    req.toodledo = toodledo;
+
+    next();
+  } catch(e) {
+    next(e);
+  }
+})
 
 app.get("/", async (req, res, next) => {
   try {
-    if (!toodledo.accessToken) {
+    if (!req.toodledo.accessToken) {
       const { code } = req.query;
 
       if (!code) {
-        res.redirect(auth);
+        res.redirect(req.toodledo.getAuthUrl(["basic", "tasks", "write"], state));
         return;
       }
 
-      await getAccessToken(code);
+      await req.toodledo.getAccessToken(code, state);
 
       res.redirect("/");
       return;
     }
 
     const css = new Set();
+
+    const getItems = s => req.toodledo.getTasks(["note", "status", "tag"], s);
 
     const index = Index({ items: await getItems(req.query.status || 0), css });
 
@@ -381,7 +418,7 @@ app.post("/add", async (req, res) => {
   const title = data.get("title");
   const note = data.get("note");
 
-  const r = await toodledo.post(
+  const r = await req.toodledo.post(
     "/tasks/add.php",
     `tasks=[${encodeURIComponent(JSON.stringify({ title, note }))}]`
   );
@@ -401,7 +438,7 @@ app.post("/edit/:id", async (req, res) => {
   const status = data.get("status");
   const id = req.params.id;
 
-  const r = await toodledo.post(
+  const r = await req.toodledo.post(
     "/tasks/edit.php",
     `tasks=[${encodeURIComponent(JSON.stringify({ id, note, title, status }))}]`
   );
@@ -421,7 +458,7 @@ app.post("/order", async (req, res) => {
     return { id: parseInt(id, 10), tag: "weight: " + weight };
   });
   console.log("order", items);
-  const r = await toodledo.post(
+  const r = await req.toodledo.post(
     "/tasks/edit.php",
     `tasks=${JSON.stringify(items)}`
   );
@@ -435,7 +472,7 @@ app.post("/order", async (req, res) => {
 });
 
 app.post("/:id", async (req, res) => {
-  const r = await toodledo.post(
+  const r = await req.toodledo.post(
     "/tasks/edit.php",
     `tasks=[{"id"%3A${req.params.id}%2C"completed":1}]`
   );
