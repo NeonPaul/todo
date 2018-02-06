@@ -4,7 +4,6 @@ const URL = require("url");
 const querystring = require("querystring");
 const parseFormData = require("isomorphic-form/dist/server");
 const jose = require('node-jose');
-const marked = require("marked");
 const Vue = require("vue");
 const cookie = require('cookie');
 
@@ -44,145 +43,7 @@ const tryRequire = f => {
   }
 };
 
-const status = {
-  NONE: 0,
-  NEXT: 0,
-  WAITING: 5,
-  SOMEDAY: 8
-};
-
-const withCss = css => ({
-  inject: ["insertCss"],
-  created() {
-    this.insertCss(
-      cssData(css)
-    );
-  }
-})
-
-const Item = {
-  mixins: [withCss(`
-  .Item {
-    display: flex;
-    align-items: flex-start;
-  }
-  
-  .Item__move {
-    margin: 5px 0;
-  }
-
-  .Item__move form {
-    margin: 0;
-  }
-
-  .Item__move form button {
-    font-size: 50%;
-  }
-  `)],
-  props: ['i', 'pt', 'nt'],
-  computed: {
-    noteMd() {
-      return marked(this.i.note)
-    }
-  },
-  template: `
-  <div class="Item">
-    <form :action="'/'+i.id" method="post">
-      <button>x</button>
-    </form>
-    <div class="Item__move">
-      <form action="/order" method="post">
-        <button :disabled="!pt">▲</button>
-        <input type="hidden" name="set" :value="i.id+'='+(i.weight - 1)">
-        <input type="hidden" name="set" :value="(pt && pt.id) + '=' + (pt &&
-  pt.weight + 1)">
-      </form>
-      <form action="/order" method="post">
-        <button :disabled="!nt">▼</button>
-        <input type="hidden" name="set" :value="i.id + '=' + (i.weight + 1)">
-        <input type="hidden" name="set" :value="(nt && nt.id) + '=' + (nt &&
-  nt.weight - 1)">
-      </form>
-    </div>
-    <details v-if="i.note">
-      <summary>{{ i.title }}</summary>
-      <div v-html="noteMd"></div>
-    </details>
-    <template v-else>
-      {{ i.title }}
-    </template>
-    <details>
-      <summary>Edit</summary>
-      <form :action="'/edit/' + i.id" method="post" autocomplete="off">
-        <input name=title :value="i.title"><br>
-        <textarea name=note>{{i.note}}</textarea><br>
-        <select name="status" v-model="i.status">
-          <option :value="${status.NEXT}">Next</option>
-          <option :value="${status.SOMEDAY}">Someday</option>
-          <option :value="${status.WAITING}">Waiting</option>
-        </select><br>
-        <button>Save</button>
-      </form>
-    </details>
-  </div>`
-  }
-
-const Items = {
-  props: ['items'],
-  components: {
-    Item
-  },
-  template: `<div><template v-for="item in items">
-    <Item v-bind="item"/><br>
-  </template></div>`
-}
-
-const AddForm = { template: `
-<form action="add" method="post" autocomplete="off">
-  <input name="title" autofocus><br>
-  <textarea name="note"></textarea><button>Ok</button>
-</form>
-` };
-
-const provide = (css, Child) => {
-  return new Vue({
-    provide() {
-      return {
-        insertCss(...styles) {
-          styles.forEach(s => css.add(s));
-        }
-      };
-    },
-    components: { Child },
-    template: "<Child />"
-  });
-};
-
-const cssData = css => `data:text/css,${encodeURIComponent(css)}`;
-
-const Index = ({ items, css }) =>
-  provide(css, {
-    components: {
-      AddForm,
-      Items
-    },
-    data(){
-      return {
-        items
-      }
-    },
-    template: `<body>
-      <a href="/">Next</a> |
-      <a href="?status=${status.SOMEDAY}">Someday</a> |
-      <a href="?status=${status.WAITING}">Waiting</a>
-    <Add-Form /><Items :items="items" /></body>`,
-    inject: ["insertCss"],
-    mixins: [withCss(`
-      body{
-        font-family:sans-serif;
-      }
-    `)]
-  });
+const Index = require('./components/index')
 
 const renderer = require("vue-server-renderer").createRenderer();
 
@@ -449,10 +310,20 @@ app.get("/", async (req, res, next) => {
     const css = new Set();
 
     const getItems = s => req.toodledo.getTasks(["note", "status", "tag"], s);
+    const items = await getItems(req.query.status || 0)
 
-    const index = Index({ items: await getItems(req.query.status || 0), css });
+    const app = new Vue({
+      provide() {
+        return {
+          insertCss(...styles) {
+            styles.forEach(s => css.add(s));
+          }
+        };
+      },
+      render: h => h(Index, { props: { items }})
+    });
 
-    const body = await renderer.renderToString(index);
+    const body = await renderer.renderToString(app);
 
     const html = `<!doctype html -->
 <html>
