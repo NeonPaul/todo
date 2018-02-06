@@ -44,68 +44,97 @@ const tryRequire = f => {
   }
 };
 
-const Item = ({ i, pt, nt }) => `
-  <style>
-    .Item {
-      display: flex;
-      align-items: flex-start;
+const status = {
+  NONE: 0,
+  NEXT: 0,
+  WAITING: 5,
+  SOMEDAY: 8
+};
+
+const withCss = css => ({
+  inject: ["insertCss"],
+  created() {
+    this.insertCss(
+      cssData(css)
+    );
+  }
+})
+
+const Item = {
+  mixins: [withCss(`
+  .Item {
+    display: flex;
+    align-items: flex-start;
+  }
+  
+  .Item__move {
+    margin: 5px 0;
+  }
+
+  .Item__move form {
+    margin: 0;
+  }
+
+  .Item__move form button {
+    font-size: 50%;
+  }
+  `)],
+  props: ['i', 'pt', 'nt'],
+  computed: {
+    noteMd() {
+      return marked(this.i.note)
     }
-  </style>
+  },
+  template: `
   <div class="Item">
-    <form action="/${i.id}" method="post">
+    <form :action="'/'+i.id" method="post">
       <button>x</button>
     </form>
-    <div style="margin: 5px 0;">
-      <form action="/order" method="post" style="margin: 0">
-        <button${pt ? "" : " disabled"} style="font-size: 50%;">▲</button>
-        <input type="hidden" name="set" value="${i.id}=${i.weight - 1}">
-        <input type="hidden" name="set" value="${pt && pt.id}=${pt &&
-  pt.weight + 1}">
+    <div class="Item__move">
+      <form action="/order" method="post">
+        <button :disabled="!pt">▲</button>
+        <input type="hidden" name="set" :value="i.id+'='+(i.weight - 1)">
+        <input type="hidden" name="set" :value="(pt && pt.id) + '=' + (pt &&
+  pt.weight + 1)">
       </form>
-      <form action="/order" method="post" style="margin: 0">
-        <button${nt ? "" : " disabled"} style="font-size: 50%;">▼</button>
-        <input type="hidden" name="set" value="${i.id}=${i.weight + 1}">
-        <input type="hidden" name="set" value="${nt && nt.id}=${nt &&
-  nt.weight - 1}">
+      <form action="/order" method="post">
+        <button :disabled="!nt">▼</button>
+        <input type="hidden" name="set" :value="i.id + '=' + (i.weight + 1)">
+        <input type="hidden" name="set" :value="(nt && nt.id) + '=' + (nt &&
+  nt.weight - 1)">
       </form>
     </div>
-    ${
-      i.note
-        ? `<details>
-        <summary>${i.title}</summary>
-        ${marked(i.note)}
-      </details>`
-        : i.title
-    }
+    <details v-if="i.note">
+      <summary>{{ i.title }}</summary>
+      <div v-html="noteMd"></div>
+    </details>
+    <template v-else>
+      {{ i.title }}
+    </template>
     <details>
       <summary>Edit</summary>
-      <form action="/edit/${i.id}" method="post" autocomplete="off">
-        <input name=title value="${i.title.replace(/"/g, "&quot;")}"><br>
-        <textarea name=note>${i.note}</textarea><br>
-        <select name="status">
-          <option value=${status.NEXT}${
-  i.status === status.NEXT ? " selected" : ""
-}>Next</option>
-          <option value=${status.SOMEDAY}${
-  i.status === status.SOMEDAY ? " selected" : ""
-}>Someday</option>
-          <option value=${status.WAITING}${
-  i.status === status.WAITING ? " selected" : ""
-}>Waiting</option>
+      <form :action="'/edit/' + i.id" method="post" autocomplete="off">
+        <input name=title :value="i.title"><br>
+        <textarea name=note>{{i.note}}</textarea><br>
+        <select name="status" v-model="i.status">
+          <option :value="${status.NEXT}">Next</option>
+          <option :value="${status.SOMEDAY}">Someday</option>
+          <option :value="${status.WAITING}">Waiting</option>
         </select><br>
         <button>Save</button>
       </form>
     </details>
-  </div>`;
+  </div>`
+  }
+
 const Items = {
   props: ['items'],
-  render(h) {
-    return h('div', {
-      domProps: {
-        innerHTML: this.items.map(Item).join("<br>")
-      }
-    })
-  }
+  components: {
+    Item
+  },
+  template: `<div><template v-for="item in items">
+    <Item v-bind="item"/><br>
+  </template></div>`
 }
 
 const AddForm = { template: `
@@ -148,15 +177,11 @@ const Index = ({ items, css }) =>
       <a href="?status=${status.WAITING}">Waiting</a>
     <Add-Form /><Items :items="items" /></body>`,
     inject: ["insertCss"],
-    created() {
-      this.insertCss(
-        cssData(`
+    mixins: [withCss(`
       body{
         font-family:sans-serif;
       }
-    `)
-      );
-    }
+    `)]
   });
 
 const renderer = require("vue-server-renderer").createRenderer();
@@ -173,13 +198,6 @@ const collect = res =>
       resolve(str);
     });
   });
-
-const status = {
-  NONE: 0,
-  NEXT: 0,
-  WAITING: 5,
-  SOMEDAY: 8
-};
 
 class Toodledo {
   constructor(clientId, secret) {
