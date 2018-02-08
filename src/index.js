@@ -1,6 +1,5 @@
 const express = require("express");
 const https = require("https");
-const URL = require("url");
 const querystring = require("querystring");
 const parseFormData = require("isomorphic-form/dist/server");
 const jose = require('node-jose');

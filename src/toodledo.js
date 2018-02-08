@@ -1,3 +1,7 @@
+const URL = require("url");
+const https = require("https");
+const querystring = require("querystring");
+
 const collect = res =>
   new Promise(resolve => {
     let str = "";
@@ -25,7 +29,7 @@ class Toodledo {
       this.onAuth(cb);
     }
 
-    return this.setAuth(auth, true)
+    return auth && this.setAuth(auth, true)
   }
 
   async setAuth(auth, init) {
