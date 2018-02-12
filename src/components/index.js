@@ -2,12 +2,9 @@ const status = require('../status')
 const withCss = require('../mixins/with-css')
 const Items = require('./items')
 const AddForm = require('./add-form')
+const bemHelper = require('../utils/bem-helper')
 
-const cls = (sub) => {
-  const clsName = 'Index'
-
-  return sub ? `${clsName}__${sub}` : clsName;
-}
+const cls = bemHelper('Index')
 
 module.exports = {
     components: {
