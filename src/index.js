@@ -157,10 +157,6 @@ app.post("/add", async (req, res) => {
 
   console.log(r.statusCode);
   res.redirect("/");
-
-  collect(r).then(d => {
-    console.log(d);
-  });
 });
 
 app.post("/edit/:id", async (req, res) => {
@@ -177,10 +173,6 @@ app.post("/edit/:id", async (req, res) => {
 
   console.log(r.statusCode);
   res.redirect("/");
-
-  collect(r).then(d => {
-    console.log(d);
-  });
 });
 
 app.post("/order", async (req, res) => {
@@ -197,10 +189,6 @@ app.post("/order", async (req, res) => {
 
   console.log(r.statusCode);
   res.redirect("/");
-
-  collect(r).then(d => {
-    console.log(d);
-  });
 });
 
 app.post("/:id", async (req, res) => {
@@ -211,10 +199,6 @@ app.post("/:id", async (req, res) => {
 
   console.log(r.statusCode);
   res.redirect("/");
-
-  collect(r).then(d => {
-    console.log(d);
-  });
 });
 
 app.use((err, req, res, next) => {
