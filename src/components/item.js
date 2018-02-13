@@ -28,16 +28,37 @@ module.exports = {
     background: transparent;
     border: none;
     opacity: 0.5;
-    cursor: pointer;
     padding: 0;
+  }
+
+  .Item button:disabled {
+    opacity: 0.3;
   }
 
   .Item__complete svg {
     width: 1.5em;
   }
 
-  .Item button:hover {
+  .Item button:hover:not(:disabled) {
     opacity: 1;
+    cursor: pointer;
+  }
+
+  .Item__note[open] {
+    border: 1px solid #ccc;
+  }
+
+  .Item__note-contents {
+    background: #eee;
+    padding: 0.5em;
+  }
+
+  .Item__note-contents > :first-child {
+    margin-top: 0;
+  }
+
+  .Item__note-contents > :last-child {
+    margin-bottom: 0;
   }
   `)],
   props: ['i', 'pt', 'nt'],
@@ -59,7 +80,7 @@ module.exports = {
       <form action="/order" method="post">
         <button :disabled="!pt">
           <svg viewbox="0 0 4 2.5">
-            <path d="M 1,2 L2,1 L3,2" stroke="currentColor" stroke-width="0.6" />
+            <path d="M 1,2 L2,1 L3,2" stroke="currentColor" stroke-width="0.6" fill="none" />
           </svg>
         </button>
         <input type="hidden" name="set" :value="i.id+'='+(i.weight - 1)">
@@ -69,7 +90,7 @@ module.exports = {
       <form action="/order" method="post">
         <button :disabled="!nt">
           <svg viewbox="0 0 4 2.5">
-            <path d="M 1,0.5 L2,1.5 L3,0.5" stroke="currentColor" stroke-width="0.6" />
+            <path d="M 1,0.5 L2,1.5 L3,0.5" stroke="currentColor" stroke-width="0.6" fill="none" />
           </svg>
         </button>
         <input type="hidden" name="set" :value="i.id + '=' + (i.weight + 1)">
@@ -77,9 +98,9 @@ module.exports = {
   nt.weight - 1)">
       </form>
     </div>
-    <details v-if="i.note">
+    <details v-if="i.note" class="${bem('note')}">
       <summary>{{ i.title }}</summary>
-      <div v-html="noteMd"></div>
+      <div v-html="noteMd" class="${bem('note-contents')}"></div>
     </details>
     <template v-else>
       {{ i.title }}
