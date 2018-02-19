@@ -24,7 +24,7 @@ module.exports = {
     margin: 0;
   }
 
-  .Item button {
+  .Item__ctl {
     background: transparent;
     border: none;
     opacity: 0.5;
@@ -60,6 +60,24 @@ module.exports = {
   .Item__note-contents > :last-child {
     margin-bottom: 0;
   }
+
+  .Item__edit form > * {
+    display: block;
+    width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin: 0;
+    padding: 0.5em;
+  }
+
+  .Item__edit textarea {
+    width: 100em;
+    height: 20em;
+  }
+
+  .Item__edit summary {
+    cursor: pointer;
+  }
   `)],
   props: ['i', 'pt', 'nt'],
   computed: {
@@ -70,7 +88,7 @@ module.exports = {
   template: `
   <div class="Item">
     <form :action="'/'+i.id" method="post" class="${bem('complete')}">
-      <button>
+      <button class="Item__ctl">
         <svg viewbox="0 0 4 4">
           <path d="M 1,1 L 3,3 M 3,1 L 1,3" stroke="currentColor" stroke-width="0.6" />
         </svg>
@@ -78,7 +96,7 @@ module.exports = {
     </form>
     <div class="Item__move">
       <form action="/order" method="post">
-        <button :disabled="!pt">
+        <button :disabled="!pt" class="Item__ctl">
           <svg viewbox="0 0 4 2.5">
             <path d="M 1,2 L2,1 L3,2" stroke="currentColor" stroke-width="0.6" fill="none" />
           </svg>
@@ -88,7 +106,7 @@ module.exports = {
   pt.weight + 1)">
       </form>
       <form action="/order" method="post">
-        <button :disabled="!nt">
+        <button :disabled="!nt" class="Item__ctl">
           <svg viewbox="0 0 4 2.5">
             <path d="M 1,0.5 L2,1.5 L3,0.5" stroke="currentColor" stroke-width="0.6" fill="none" />
           </svg>
@@ -105,7 +123,7 @@ module.exports = {
     <template v-else>
       {{ i.title }}
     </template>
-    <details>
+    <details class="Item__edit">
       <summary>Edit</summary>
       <form :action="'/edit/' + i.id" method="post" autocomplete="off">
         <input name=title :value="i.title"><br>
