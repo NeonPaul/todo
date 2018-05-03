@@ -11,7 +11,7 @@ module.exports = {
       AddForm,
       Items
     },
-    props: ['items'],
+    props: ['items', 'status'],
     template: `<body class=${cls()}>
       <ul class="${cls('sidebar')}">
         <li><a href="/">Next</a></li>
@@ -19,7 +19,7 @@ module.exports = {
         <li><a href="?status=${status.WAITING}">Waiting</a></li>
       </ul>
       <div class="${cls('main')}">
-        <Add-Form /><Items :items="items" />
+        <Add-Form /><Items :items="items" :status="status" />
       </div>
     </body>`,
     mixins: [withCss(`

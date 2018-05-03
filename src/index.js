@@ -112,7 +112,8 @@ app.get("/", async (req, res, next) => {
     const css = new Set();
 
     const getItems = s => req.toodledo.getTasks(["note", "status", "tag"], s);
-    const items = await getItems(req.query.status || 0)
+    const status = req.query.status || 0;
+    const items = await getItems(status)
 
     const app = new Vue({
       provide() {
@@ -122,7 +123,7 @@ app.get("/", async (req, res, next) => {
           }
         };
       },
-      render: h => h(Index, { props: { items }})
+      render: h => h(Index, { props: { items, status }})
     });
 
     const body = await renderer.renderToString(app);
@@ -175,21 +176,41 @@ app.post("/edit/:id", async (req, res) => {
   res.redirect("/");
 });
 
-app.post("/order", async (req, res) => {
-  const data = await parseFormData(req);
-  const items = data.getAll("set").map(set => {
-    const [id, weight] = set.split("=");
-    return { id: parseInt(id, 10), tag: "weight: " + weight };
-  });
+app.post("/move", async (req, res) => {
+  try {
+    const data = await parseFormData(req);
+    const status = data.get('status')
+    const id = data.get('id')
+    const position = data.get('position')
 
-  const r = await req.toodledo.post(
-    "/tasks/edit.php",
-    `tasks=${JSON.stringify(items)}`
-  );
+    const items = await req.toodledo.getTasks(["status", "tag"], status)
 
-  console.log(r.statusCode);
-  res.redirect("/");
-});
+    const ix = items.findIndex(i => i.id === +id)
+    const a = items[ix];
+    const b = items[ix + +position];
+    const delta = b.order - a.order;
+
+    console.log(a.weight, b.weight);
+
+    a.weight += delta;
+    b.weight -= delta;
+
+    console.log(b.weight, a.weight);
+
+    const payload = ({ id, weight }) => encodeURIComponent(JSON.stringify({ id, tag: 'weight: '+ weight }))
+
+    const r = await req.toodledo.post(
+      "/tasks/edit.php",
+      `tasks=[${payload(a)}, ${payload(b)}]`
+    );
+
+    console.log(r.statusCode);
+  } catch(e) {
+    console.log(e)
+  } finally {
+    res.redirect("/");
+  }
+})
 
 app.post("/:id", async (req, res) => {
   const r = await req.toodledo.post(

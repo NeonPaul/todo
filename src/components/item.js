@@ -2,6 +2,8 @@ const marked = require("marked");
 const status = require('../status')
 const withCss = require('../mixins/with-css')
 const bemHelper = require('../utils/bem-helper')
+const Move = require('./move')
+const Button = require('./button')
 
 const bem = bemHelper('Item')
 
@@ -10,29 +12,6 @@ module.exports = {
   .Item {
     display: flex;
     align-items: flex-start;
-  }
-
-  .Item__move svg {
-    width: 1.5em;
-  }
-
-  .Item__move {
-    margin-top: -0.25em;
-  }
-
-  .Item__move form {
-    margin: 0;
-  }
-
-  .Item__ctl {
-    background: transparent;
-    border: none;
-    opacity: 0.5;
-    padding: 0;
-  }
-
-  .Item button:disabled {
-    opacity: 0.3;
   }
 
   .Item__complete svg {
@@ -79,43 +58,26 @@ module.exports = {
     cursor: pointer;
   }
   `)],
-  props: ['i', 'pt', 'nt'],
+  props: ['i', 'first', 'last', 'status'],
   computed: {
     noteMd() {
       return marked(this.i.note)
     }
   },
+  components: {
+    Move,
+    Button
+  },
   template: `
   <div class="Item">
     <form :action="'/'+i.id" method="post" class="${bem('complete')}">
-      <button class="Item__ctl">
+      <Button cls="Item__ctl">
         <svg viewbox="0 0 4 4">
           <path d="M 1,1 L 3,3 M 3,1 L 1,3" stroke="currentColor" stroke-width="0.6" />
         </svg>
-      </button>
+      </Button>
     </form>
-    <div class="Item__move">
-      <form action="/order" method="post">
-        <button :disabled="!pt" class="Item__ctl">
-          <svg viewbox="0 0 4 2.5">
-            <path d="M 1,2 L2,1 L3,2" stroke="currentColor" stroke-width="0.6" fill="none" />
-          </svg>
-        </button>
-        <input type="hidden" name="set" :value="i.id+'='+(i.weight - 1)">
-        <input type="hidden" name="set" :value="(pt && pt.id) + '=' + (pt &&
-  pt.weight + 1)">
-      </form>
-      <form action="/order" method="post">
-        <button :disabled="!nt" class="Item__ctl">
-          <svg viewbox="0 0 4 2.5">
-            <path d="M 1,0.5 L2,1.5 L3,0.5" stroke="currentColor" stroke-width="0.6" fill="none" />
-          </svg>
-        </button>
-        <input type="hidden" name="set" :value="i.id + '=' + (i.weight + 1)">
-        <input type="hidden" name="set" :value="(nt && nt.id) + '=' + (nt &&
-  nt.weight - 1)">
-      </form>
-    </div>
+    <Move :item="i" :up="!first" :down="!last" :status="status" />
     <details v-if="i.note" class="${bem('note')}">
       <summary>{{ i.title }}</summary>
       <div v-html="noteMd" class="${bem('note-contents')}"></div>

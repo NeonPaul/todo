@@ -180,6 +180,7 @@ class Toodledo {
   }
 
   async getTasks(fields, status = 0) {
+    fields = [...fields, 'tag', 'status', 'added']
     const tasks = await this.get("/tasks/get.php?fields=" + fields.join(","));
 
     return tasks
@@ -187,15 +188,10 @@ class Toodledo {
       .map((todo, ix) => {
         const [, weight] = todo.tag.match(/weight: (-?[0-9]+)/) || [0, 0];
         todo.weight = parseInt(weight, 10);
-        todo.order = ix + todo.weight;
+        todo.order = (+todo.added) + todo.weight + ix;
         return todo;
       })
       .sort((a, b) => a.order - b.order)
-      .map((i, ix, tasks) => {
-        const pt = tasks[ix - 1];
-        const nt = tasks[ix + 1];
-        return { i, pt, nt };
-      });
   }
 }
 
