@@ -14,7 +14,6 @@ export function resolve(specifier, parentModuleUrl, defaultResolve) {
 }
 
 export function dynamicInstantiate(url) {
-  console.log(url)
   return {
     exports: ['default'],
     execute: exports => {

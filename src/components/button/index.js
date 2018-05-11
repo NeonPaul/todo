@@ -1,11 +1,11 @@
-const withCss = require('../mixins/with-css')
-const bemHelper = require('../utils/bem-helper')
+const withCss = require('../../mixins/with-css')
+const bemHelper = require('../../utils/bem-helper')
 const cls = (...classes) => classes.filter(Boolean).join(' ');
 
 const bem = bemHelper('Button')
 
 module.exports = {
-  mixins: [withCss(`
+  mixins: [withCss.data(`
   .Button svg {
     width: 1.5em;
   }

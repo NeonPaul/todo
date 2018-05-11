@@ -3,6 +3,8 @@ const parseFormData = require("isomorphic-form/dist/server");
 const jose = require('node-jose');
 const Vue = require("vue");
 const cookie = require('cookie');
+const fs = require('fs');
+const assets = require('./assets');
 
 const app = express();
 
@@ -91,6 +93,15 @@ app.use(async (req, res, next) => {
   } catch(e) {
     next(e);
   }
+})
+
+app.get("/*.css", (req, res, next) => {
+  const stream = fs.createReadStream(assets.toFile(req.path));
+  stream.on('error', e => {
+    console.log(e);
+    next(new Error('File not found'))
+  });
+  stream.pipe(res);
 })
 
 app.get("/", async (req, res, next) => {

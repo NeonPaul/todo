@@ -8,7 +8,7 @@ const Button = require('./button')
 const bem = bemHelper('Item')
 
 module.exports = {
-  mixins: [withCss(`
+  mixins: [withCss.data(`
   .Item {
     display: flex;
     align-items: flex-start;

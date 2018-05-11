@@ -8,7 +8,7 @@ const cls = bemHelper('Index')
 
 module.exports = {
     components: {
-      AddForm,
+      AddForm: () => AddForm,
       Items
     },
     props: ['items', 'status'],
@@ -22,7 +22,7 @@ module.exports = {
         <Add-Form /><Items :items="items" :status="status" />
       </div>
     </body>`,
-    mixins: [withCss(`
+    mixins: [withCss.data(`
       body{
         margin: 0;
         font-family:sans-serif;

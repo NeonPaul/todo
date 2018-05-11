@@ -5,7 +5,7 @@ const Button = require('./button')
 const bem = bemHelper('Move')
 
 module.exports = {
-  mixins: [withCss(`
+  mixins: [withCss.data(`
   .Move {
     margin-top: -0.25em;
   }
