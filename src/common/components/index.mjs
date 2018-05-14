@@ -1,12 +1,12 @@
-const status = require('../status')
-const withCss = require('../mixins/with-css')
-const Items = require('./items')
-const AddForm = require('./add-form')
-const bemHelper = require('../utils/bem-helper')
+import status from '../status';
+import withCss from '../mixins/with-css';
+import Items from './items';
+import AddForm from './add-form/index';
+import bemHelper from '../utils/bem-helper';
 
 const cls = bemHelper('Index')
 
-module.exports = {
+export default {
     components: {
       AddForm: () => AddForm,
       Items
