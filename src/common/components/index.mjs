@@ -1,14 +1,14 @@
 import status from '../status';
 import withCss from '../mixins/with-css';
 import Items from './items';
-import AddForm from './add-form/index';
+import AddForm from './add-form';
 import bemHelper from '../utils/bem-helper';
 
 const cls = bemHelper('Index')
 
 export default {
     components: {
-      AddForm: () => AddForm,
+      AddForm,
       Items
     },
     props: ['items', 'status'],

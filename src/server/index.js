@@ -51,22 +51,48 @@ const Toodledo = require('./toodledo');
 
 const cookieKey = 'auth';
 
+const streamFile = (file, opts) => (req, res, next) => {
+  if (typeof file === 'function') {
+    file = file(req)
+  }
 
-app.get("/*.css", (req, res, next) => {
-  const stream = fs.createReadStream(assets.toFile(req.path));
+  const stream = fs.createReadStream(file);
   stream.on('error', e => {
     console.log(e);
-    next(new Error('File not found'))
+    next(new Error('File not found'));
   });
-  stream.pipe(res);
-})
+  stream.pipe(res, opts);
+  return stream;
+}
 
-const static = ['../common', '../client']
+app.get("/*.css", streamFile(req => assets.toFile(req.path)))
+
+const static = ['common', 'client']
 
 static.forEach(dir => {
-  app.use(express.static(path.join(__dirname, dir), {
-    extensions: ['js', 'mjs']
+  app.use(`/${dir}`, express.static(path.join(__dirname, '..', dir), {
+    extensions: ['mjs'],
+    index: 'index.mjs'
   }))
+})
+
+app.get('*/~/marked', (req, res, next) => {
+  res.set('Content-Type', 'application/javascript');
+  res.write(`
+    const module = {
+      exports: {}
+    };
+  `);
+
+  streamFile(require.resolve('marked/lib/marked.js'), {
+    end: false
+  })(req, res, next).on('end', () => {
+    res.write(`
+      export default module.exports;
+    `)
+
+    res.end();
+  })
 })
 
 app.use(async (req, res, next) => {
@@ -147,7 +173,7 @@ app.get("/", async (req, res, next) => {
   <head>
     <meta charset="utf-8">
     <title>Todo</title>
-    <script src="main.js" type="module"></script>
+    <script src="client/main.js" type="module"></script>
     ${Array.from(css)
       .map(url => `<link rel=stylesheet href="${url}">`)
       .join("\n")}

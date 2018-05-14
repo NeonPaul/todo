@@ -1,10 +1,10 @@
-const withCss = require('../../mixins/with-css')
-const bemHelper = require('../../utils/bem-helper')
+import withCss from '../../mixins/with-css';
+import bemHelper from '../../utils/bem-helper';
 const cls = (...classes) => classes.filter(Boolean).join(' ');
 
 const bem = bemHelper('Button')
 
-module.exports = {
+export default ({
   mixins: [withCss.data(`
   .Button svg {
     width: 1.5em;
@@ -32,4 +32,4 @@ module.exports = {
       this.$slots.default
     )
   }
-}
+})

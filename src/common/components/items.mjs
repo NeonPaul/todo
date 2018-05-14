@@ -1,6 +1,6 @@
-const Item = require('./item')
+import Item from './item';
 
-module.exports = {
+export default {
   props: ['items', 'status'],
   components: {
     Item

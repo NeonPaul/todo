@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   NONE: 0,
   NEXT: 0,
   WAITING: 5,

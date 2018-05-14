@@ -1,10 +1,12 @@
 const cssData = css => `data:text/css,${encodeURIComponent(css)}`;
 
-module.exports = css => ({
+const cssMixin = css => ({
   inject: ["insertCss"],
   created() {
     this.insertCss(css);
   }
 })
 
-module.exports.data = css => module.exports(cssData(css))
+cssMixin.data = css => cssMixin(cssData(css))
+
+export default cssMixin;

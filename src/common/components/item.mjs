@@ -1,13 +1,13 @@
-const marked = require("marked");
-const status = require('../status')
-const withCss = require('../mixins/with-css')
-const bemHelper = require('../utils/bem-helper')
-const Move = require('./move')
-const Button = require('./button')
+import marked from "./~/marked"
+import status from '../status'
+import withCss from '../mixins/with-css'
+import bemHelper from '../utils/bem-helper'
+import Move from './move'
+import Button from './button'
 
 const bem = bemHelper('Item')
 
-module.exports = {
+export default {
   mixins: [withCss.data(`
   .Item {
     display: flex;

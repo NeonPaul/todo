@@ -1,10 +1,10 @@
-const withCss = require('../mixins/with-css')
-const bemHelper = require('../utils/bem-helper')
-const Button = require('./button')
+import withCss from '../mixins/with-css';
+import bemHelper from '../utils/bem-helper';
+import Button from './button';
 
 const bem = bemHelper('Move')
 
-module.exports = {
+export default ({
   mixins: [withCss.data(`
   .Move {
     margin-top: -0.25em;
@@ -40,4 +40,4 @@ module.exports = {
   <input type="hidden" name="id" :value="item.id">
   <input type="hidden" name="position" value="1" />
 </form>
-</div>`}
+</div>`})

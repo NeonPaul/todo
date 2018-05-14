@@ -1,9 +1,11 @@
-const withCss = require('../../mixins/with-css')
-const bemHelper = require('../../utils/bem-helper')
+import withCss from '../../mixins/with-css'
+import bemHelper from '../../utils/bem-helper'
+
+const css = '/common/components/add-form/css.css';
 
 const bem = bemHelper('AddForm')
 
-module.exports = import('./css.css').then(css => ({
+export default {
   template: `
 <form action="add" method="post" autocomplete="off" class="${bem()}">
   <input name="title" autofocus>
@@ -11,5 +13,5 @@ module.exports = import('./css.css').then(css => ({
   <button class="${bem('button')}">Ok</button>
 </form>
 `,
-  mixins: [withCss(css.default)]
-}));
+  mixins: [withCss(css)]
+}
