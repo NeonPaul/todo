@@ -69,10 +69,11 @@ app.get('/~/marked', (req, res, next) => {
   // This is a cjs module so we have to convert to esm with some
   // gross hacky-hacks
   res.set('Content-Type', 'application/javascript');
+
+  // Todo: use stream template for these
   res.write(`
-    const module = {
-      exports: {}
-    };
+    const exports = {};
+    const module = { exports };
   `);
 
   const stream = streamFile(
@@ -84,9 +85,7 @@ app.get('/~/marked', (req, res, next) => {
 
   stream.on('end', () => {
     res.write(`
-      const marked = window.marked;
-      delete window.marked;
-      export default marked;
+      export default module.exports;
     `)
 
     res.end();
@@ -108,6 +107,50 @@ app.get('/~/vue', (req, res, next) => {
   // Todo: Use the runtime version
   // - requires template pre-compilation (or use JSX?)
   streamFile(require.resolve('vue/dist/vue.esm.js'))(req, res, next);
+})
+
+app.get('/~/vuedraggable', (req, res, next) => {
+  // This is a cjs module so we have to convert to esm with some
+  // gross hacky-hacks
+  res.set('Content-Type', 'application/javascript');
+  res.write(`
+    let exports = {};
+    let module = { exports };
+  `);
+
+  const sortableStream = streamFile(
+    require.resolve('sortablejs/Sortable.min.js'),
+    {
+      end: false
+    }
+  )(req, res, next);
+
+  sortableStream.on('end', () => {
+    res.write(`
+      let s = module.exports;
+      function require() {
+        return s;
+      }
+
+      exports = {};
+      module = { exports };
+    `);
+
+    const stream = streamFile(
+      require.resolve('vuedraggable/dist/vuedraggable.js'),
+      {
+        end: false
+      }
+    )(req, res, next);
+
+    stream.on('end', () => {
+      res.write(`
+        export default module.exports;
+      `)
+
+      res.end();
+    })
+  })
 })
 
 // Do the auth stuff and set up toodledo client
@@ -210,6 +253,9 @@ app.get("/", async (req, res, next) => {
   }
 });
 
+// Todo: make these json api calls
+// have the main handler parse its own form data
+
 // Add new task
 app.post("/add", async (req, res) => {
   const data = await parseFormData(req);
@@ -241,6 +287,24 @@ app.post("/edit/:id", async (req, res) => {
   console.log(r.statusCode);
   res.redirect("/");
 });
+
+// Bulk update
+app.post("/update", async (req, res) => {
+  const data = await parseFormData(req);
+  const updates = JSON.parse(data.get('json'));
+
+  const payload = updates.map(u => encodeURIComponent(JSON.stringify({
+    id: u.id,
+    tag: 'weight: ' + u.weight
+  }))).join(',');
+
+  const r = await req.toodledo.post(
+    "/tasks/edit.php",
+    `tasks=[${payload}]`
+  );
+
+  res.sendStatus(r.statusCode);
+})
 
 // Reorder tasks
 app.post("/move", async (req, res) => {
