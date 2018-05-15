@@ -65,7 +65,7 @@ static.forEach(dir => {
 // packaged differently, so manip them individually
 
 // Serve marked
-app.get('*/~/marked', (req, res, next) => {
+app.get('/~/marked', (req, res, next) => {
   // This is a cjs module so we have to convert to esm with some
   // gross hacky-hacks
   res.set('Content-Type', 'application/javascript');
@@ -94,16 +94,19 @@ app.get('*/~/marked', (req, res, next) => {
 })
 
 // Serve vue lib
-app.get('*/~/vue', (req, res, next) => {
+app.get('/~/vue', (req, res, next) => {
   // This is an esm file but it's designed for webpack
   // so requires process.env to be defined
   res.set('Content-Type', 'application/javascript');
+  // Todo - can this be done on `window`?
   res.write(`
     const process = {
       env: {}
     };
   `);
 
+  // Todo: Use the runtime version
+  // - requires template pre-compilation (or use JSX?)
   streamFile(require.resolve('vue/dist/vue.esm.js'))(req, res, next);
 })
 

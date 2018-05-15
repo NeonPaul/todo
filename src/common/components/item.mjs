@@ -1,4 +1,4 @@
-import marked from "./~/marked"
+import marked from "/~/marked"
 import status from '../status'
 import withCss from '../mixins/with-css'
 import bemHelper from '../utils/bem-helper'

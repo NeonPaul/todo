@@ -10,7 +10,7 @@ export function resolve(specifier, parentModuleUrl, defaultResolve) {
     }
   }
 
-  const nmTest = /^\.?\/~\//
+  const nmTest = /^\/~\//
 
   if(nmTest.test(specifier)) {
     return defaultResolve(specifier.replace(nmTest, ''))
