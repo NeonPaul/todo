@@ -3,12 +3,13 @@ const parseFormData = require("isomorphic-form/dist/server");
 const jose = require('node-jose');
 const Vue = require("vue");
 const cookie = require('cookie');
-const fs = require('fs');
 const path = require('path');
 const assets = require('../assets');
+const streamFile = require('./streamFile')
 
 const app = express();
 
+// Set up environment variables
 try {
   const { clientId, secret, port, jweKey } = require("../env.js");
   var env = {
@@ -30,43 +31,26 @@ if (!CLIENT_ID || !SECRET) {
   );
 }
 
+// OAuth things
+// TODO: Improve this
 const state = (Math.random() * 10 ** 17).toString(16);
 
+// Import jwe key
+// TODO: Don't run express until this promise
 let key;
-
 jose.JWK.asKey(JWE_KEY).then(k => { key = k });
 
-const tryRequire = f => {
-  try {
-    return require(f);
-  } catch (e) {
-  }
-};
 
 const Index = import('../common/components/index')
-
 const renderer = require("vue-server-renderer").createRenderer();
-
 const Toodledo = require('./toodledo');
-
 const cookieKey = 'auth';
 
-const streamFile = (file, opts) => (req, res, next) => {
-  if (typeof file === 'function') {
-    file = file(req)
-  }
-
-  const stream = fs.createReadStream(file);
-  stream.on('error', e => {
-    console.log(e);
-    next(new Error('File not found'));
-  });
-  stream.pipe(res, opts);
-  return stream;
-}
-
+// Serve css assets
+// TODO: Is this needed any more?
 app.get("/*.css", streamFile(req => assets.toFile(req.path)))
 
+// Serve common & client modules
 const static = ['common', 'client']
 
 static.forEach(dir => {
@@ -76,7 +60,14 @@ static.forEach(dir => {
   }))
 })
 
+// In these entries we designate /~/ to refer to node_modules
+// Modules generally not designed for esm-browser use and are all
+// packaged differently, so manip them individually
+
+// Serve marked
 app.get('*/~/marked', (req, res, next) => {
+  // This is a cjs module so we have to convert to esm with some
+  // gross hacky-hacks
   res.set('Content-Type', 'application/javascript');
   res.write(`
     const module = {
@@ -84,17 +75,40 @@ app.get('*/~/marked', (req, res, next) => {
     };
   `);
 
-  streamFile(require.resolve('marked/lib/marked.js'), {
-    end: false
-  })(req, res, next).on('end', () => {
+  const stream = streamFile(
+    require.resolve('marked/lib/marked.js'),
+    {
+      end: false
+    }
+  )(req, res, next);
+
+  stream.on('end', () => {
     res.write(`
-      export default module.exports;
+      const marked = window.marked;
+      delete window.marked;
+      export default marked;
     `)
 
     res.end();
   })
 })
 
+// Serve vue lib
+app.get('*/~/vue', (req, res, next) => {
+  // This is an esm file but it's designed for webpack
+  // so requires process.env to be defined
+  res.set('Content-Type', 'application/javascript');
+  res.write(`
+    const process = {
+      env: {}
+    };
+  `);
+
+  streamFile(require.resolve('vue/dist/vue.esm.js'))(req, res, next);
+})
+
+// Do the auth stuff and set up toodledo client
+// Todo: Make this better
 app.use(async (req, res, next) => {
   try {
     const enc = cookie.parse(req.headers.cookie || '')[cookieKey];
@@ -133,6 +147,7 @@ app.use(async (req, res, next) => {
   }
 })
 
+// Serve app index
 app.get("/", async (req, res, next) => {
   try {
     if (!req.toodledo.accessToken) {
@@ -173,12 +188,17 @@ app.get("/", async (req, res, next) => {
   <head>
     <meta charset="utf-8">
     <title>Todo</title>
+    <script>
+    window.vueCx = ${JSON.stringify({ items, status })};
+    </script>
     <script src="client/main.js" type="module"></script>
     ${Array.from(css)
       .map(url => `<link rel=stylesheet href="${url}">`)
       .join("\n")}
   </head>
+  <body>
   ${body}
+  </body>
 </html>`;
 
     res.send(html);
@@ -187,6 +207,7 @@ app.get("/", async (req, res, next) => {
   }
 });
 
+// Add new task
 app.post("/add", async (req, res) => {
   const data = await parseFormData(req);
   const title = data.get("title");
@@ -201,6 +222,7 @@ app.post("/add", async (req, res) => {
   res.redirect("/");
 });
 
+// Edit existing task
 app.post("/edit/:id", async (req, res) => {
   const data = await parseFormData(req);
   const title = data.get("title");
@@ -217,6 +239,7 @@ app.post("/edit/:id", async (req, res) => {
   res.redirect("/");
 });
 
+// Reorder tasks
 app.post("/move", async (req, res) => {
   try {
     const data = await parseFormData(req);
@@ -253,6 +276,7 @@ app.post("/move", async (req, res) => {
   }
 })
 
+// Compete task
 app.post("/:id", async (req, res) => {
   const r = await req.toodledo.post(
     "/tasks/edit.php",
@@ -263,6 +287,8 @@ app.post("/:id", async (req, res) => {
   res.redirect("/");
 });
 
+// Handle errors
+// Todo: Nice error pages
 app.use((err, req, res, next) => {
   let msg = {};
 
@@ -278,6 +304,8 @@ app.use((err, req, res, next) => {
   res.send("<pre>" + err.stack + "</pre>");
 });
 
+
+// Start
 app.listen(PORT, () => {
   console.log("http://localhost:" + PORT);
 });

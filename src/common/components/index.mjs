@@ -12,7 +12,7 @@ export default {
       Items
     },
     props: ['items', 'status'],
-    template: `<body class=${cls()}>
+    template: `<div class=${cls()} id="app">
       <ul class="${cls('sidebar')}">
         <li><a href="/">Next</a></li>
         <li><a href="?status=${status.SOMEDAY}">Someday</a></li>
@@ -21,7 +21,7 @@ export default {
       <div class="${cls('main')}">
         <Add-Form /><Items :items="items" :status="status" />
       </div>
-    </body>`,
+    </div>`,
     mixins: [withCss.data(`
       body{
         margin: 0;
