@@ -18,5 +18,8 @@
     "vue": "^2.5.13",
     "vue-server-renderer": "^2.5.13",
     "vuedraggable": "^2.16.0"
+  },
+  "engines": {
+    "node": "10"
   }
 }
