@@ -4,7 +4,6 @@ const jose = require('node-jose');
 const Vue = require("vue");
 const cookie = require('cookie');
 const path = require('path');
-const assets = require('../assets');
 const streamFile = require('./streamFile')
 
 const app = express();
@@ -45,10 +44,6 @@ const Index = import('../common/components/index')
 const renderer = require("vue-server-renderer").createRenderer();
 const Toodledo = require('./toodledo');
 const cookieKey = 'auth';
-
-// Serve css assets
-// TODO: Is this needed any more?
-app.get("/*.css", streamFile(req => assets.toFile(req.path)))
 
 // Serve common & client modules
 const static = ['common', 'client']
