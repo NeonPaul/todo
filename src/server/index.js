@@ -6,21 +6,21 @@ const path = require('path');
 
 const app = express();
 
-// Set up environment variables
-try {
-  const { clientId, secret, port, jweKey } = require("../env.js");
-  var env = {
-    CLIENT_ID: clientId,
-    SECRET: secret,
-    PORT: port,
-    JWE_KEY: jweKey,
-    ...process.env
-  };
-} catch (e) {
-  var env = process.env;
-}
 
-const { CLIENT_ID, SECRET, PORT, JWE_KEY } = env;
+// Set up environment variables
+const { CLIENT_ID, SECRET, PORT, JWE_KEY } =
+  process.env.NODE_ENV === 'PRODUCTION' ?
+    process.env :
+    {
+      ...(() => {
+        try {
+          return require('../env.js')
+        } catch(e) {
+          return {};
+        }
+      })(),
+      ...process.env
+    };
 
 if (!CLIENT_ID || !SECRET) {
   throw new Error(
