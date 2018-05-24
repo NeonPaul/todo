@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const fs = require('fs');
 const ST = require('stream-template');
@@ -32,6 +33,12 @@ router.get('/marked', (req, res, next) => {
     // Todo: Use the runtime version
     // - requires template pre-compilation (or use JSX?)
     res.sendFile(require.resolve('vue/dist/vue.esm.js'));
+  })
+
+  router.get('/vuex', (req, res) => {
+    const pkg = require.resolve('vuex/package.json');
+    const {module} = require(pkg);
+    res.sendFile(path.resolve(pkg, '..', module))
   })
   
   router.get('/vuedraggable', (req, res, next) => {

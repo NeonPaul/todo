@@ -18,7 +18,8 @@
     "stream-template": "0.0.6",
     "vue": "^2.5.13",
     "vue-server-renderer": "^2.5.13",
-    "vuedraggable": "^2.16.0"
+    "vuedraggable": "^2.16.0",
+    "vuex": "^3.0.1"
   },
   "engines": {
     "node": "10"

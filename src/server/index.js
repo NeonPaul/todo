@@ -6,7 +6,6 @@ const path = require('path');
 
 const app = express();
 
-
 // Set up environment variables
 const { CLIENT_ID, SECRET, PORT, JWE_KEY } =
   process.env.NODE_ENV === 'PRODUCTION' ?

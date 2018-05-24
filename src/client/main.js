@@ -1,13 +1,30 @@
 import Index from '../common/components/index.mjs';
 import Vue from '/~/vue'
+import Vuex from '/~/vuex'
+
+Vue.use(Vuex);
 
 const { items, status } = window.vueCx;
+
+const store = new Vuex.Store({
+  state: {
+    items, status
+  },
+  mutations: {
+    setItems (state, items) {
+      state.items = items;
+    },
+    setStatus (state, status) {
+      state.status = status;
+    }
+  }
+})
 
 // TODO: Replace this with redux & optimistic changes
 const dispatch = function (action) {
   switch (action.type) {
     case 'MOVE':
-      const items = app.items;
+      const items = store.state.items;
       const moved = items.slice();
 
       const { oldIndex, newIndex } = action.payload;
@@ -29,7 +46,7 @@ const dispatch = function (action) {
         sort(i, i - dir);
       }
 
-      app.items = newList;
+      store.commit('setItems', newList);
 
       const form = new FormData();
       form.append('json', JSON.stringify(updates));
@@ -59,8 +76,12 @@ const app = new Vue({
       };
     },
     data: {
-      items,
       status
+    },
+    computed: {
+      items() {
+        return store.state.items;
+      }
     },
     render(h) {
       const { items, status } = this;
