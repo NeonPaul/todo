@@ -136,6 +136,7 @@ app.get("/", async (req, res, next) => {
   <head>
     <meta charset="utf-8">
     <title>Todo</title>
+    <link rel="manifest" href="client/webmanifest.webmanifest">
     <script>
     window.process = {
       env: {

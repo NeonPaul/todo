@@ -1,0 +1,14 @@
+{
+  "name": "Todogong",
+  "background_color": "white",
+  "description": "Todo list",
+  "display": "fullscreen",
+  "share_target": {
+    "action": "/",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
