@@ -4,6 +4,7 @@
   "description": "Todo list",
   "display": "fullscreen",
   "share_target": {
+    "url_template": "/?title={title}&text={text}&url={url}",
     "action": "/",
     "params": {
       "title": "title",
