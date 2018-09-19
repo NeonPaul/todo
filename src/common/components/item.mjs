@@ -12,6 +12,15 @@ export default {
   .Item {
     display: flex;
     align-items: flex-start;
+    background: #EEE;
+  }
+
+  .Item:nth-child(odd) {
+    background: #F7F7F7;
+  }
+
+  .Item > * {
+    padding: 1em;
   }
 
   .Item__complete svg {
@@ -57,6 +66,10 @@ export default {
   .Item__edit summary {
     cursor: pointer;
   }
+
+  .Item__title {
+    flex-grow: 1;
+  }
   `)],
   props: ['i', 'first', 'last', 'status'],
   computed: {
@@ -78,13 +91,13 @@ export default {
       </Button>
     </form>
     <Move :item="i" :up="!first" :down="!last" :status="status" />
-    <details v-if="i.note" class="${bem('note')}">
+    <details v-if="i.note" class="${bem('note')} ${bem('title')}">
       <summary>{{ i.title }}</summary>
       <div v-html="noteMd" class="${bem('note-contents')}"></div>
     </details>
-    <template v-else>
+    <div class="${bem('title')}" v-else>
       {{ i.title }}
-    </template>
+    </div>
     <details class="Item__edit">
       <summary>Edit</summary>
       <form :action="'/edit/' + i.id" method="post" autocomplete="off">
