@@ -43,14 +43,13 @@ const Toodledo = require('./toodledo');
 const cookieKey = 'auth';
 
 // Serve common & client modules
-const static = ['common', 'client']
+const staticCfg = {
+  extensions: ['mjs'],
+  index: 'index.mjs'
+};
 
-static.forEach(dir => {
-  app.use(`/${dir}`, express.static(path.join(__dirname, '..', dir), {
-    extensions: ['mjs'],
-    index: 'index.mjs'
-  }))
-})
+app.use(`/`, express.static(path.join(__dirname, '..', 'client'), staticCfg));
+app.use(`/common`, express.static(path.join(__dirname, '..', 'common'), staticCfg));
 
 // In these entries we designate /~/ to refer to node_modules
 app.use('/~', require('./modules'));
@@ -136,8 +135,10 @@ app.get("/", async (req, res, next) => {
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="favicon.ico">
+    <link rel="icon" href="favicon.svg">
     <title>Todo</title>
-    <link rel="manifest" href="client/webmanifest.webmanifest">
+    <link rel="manifest" href="webmanifest.webmanifest">
     <script>
     window.process = {
       env: {
@@ -146,7 +147,7 @@ app.get("/", async (req, res, next) => {
     };
     window.vueCx = ${JSON.stringify({ items, status })};
     </script>
-    <script src="client/main.js" type="module"></script>
+    <script src="main.js" type="module"></script>
     ${Array.from(css)
       .map(url => `<link rel=stylesheet href="${url}">`)
       .join("\n")}
