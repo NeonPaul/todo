@@ -11,5 +11,10 @@
       "text": "text",
       "url": "url"
     }
-  }
+  },
+  "icons": [{
+    "src": "/favicon.svg",
+    "type": "image/svg+xml",
+    "sizes": "192x192"
+  }]
 }
