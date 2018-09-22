@@ -53,6 +53,7 @@ app.use(`/common`, express.static(path.join(__dirname, '..', 'common'), staticCf
 
 // In these entries we designate /~/ to refer to node_modules
 app.use('/~', require('./modules'));
+app.use('/!', require('./modules'));
 
 // Do the auth stuff and set up toodledo client
 // Todo: Make this better

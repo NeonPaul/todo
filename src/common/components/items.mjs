@@ -1,12 +1,13 @@
 import Item from './item';
-import Draggable from '/~/vuedraggable';
+import Draggable from '/!/@shopify/draggable';
+
+const { Sortable } = Draggable;
 
 export default {
   props: ['items', 'status'],
   inject: ["dispatch"],
   components: {
-    Item,
-    Draggable
+    Item
   },
   methods: {
     change(obj) {
@@ -16,7 +17,22 @@ export default {
       })
     }
   },
-  template: `<div><draggable :value="items" @change="change" :options="{ filter: 'textarea, input, button, select', preventOnFilter: false }">
+  async mounted() {
+    this.sortable = new Sortable(this.$el, {
+      draggable: '.Items > *'
+    })
+    this.sortable.on('drag:start', (e) => {
+      if(e.data.sensorEvent.data.target.tagName.match(/input|textarea|button|select/i)){
+        e.cancel();
+      }
+    });
+    this.sortable.on('sortable:stop', (e) => {
+      if(e.data.oldIndex !== e.data.newIndex) {
+        this.change({ moved: e.data });
+      }
+    });
+  },
+  template: `<div class="Items">
     <Item v-for="(item, index) in items" :key="item.id" :i="item" :status="status" :first="index === 0" :last="index === items.length - 1"/><br>
-  </draggable></div>`
+  </div>`
 }
