@@ -13,14 +13,21 @@ export default {
     },
     props: ['items', 'status'],
     template: `<div class=${cls()} id="app">
-      <ul class="${cls('sidebar')}">
-        <li><a href="/">Next</a></li>
-        <li><a href="?status=${status.SOMEDAY}">Someday</a></li>
-        <li><a href="?status=${status.WAITING}">Waiting</a></li>
-      </ul>
-      <div class="${cls('main')}">
-        <Add-Form /><Items :items="items" :status="status" />
+      <div class="${cls('top')}">
+        <details>
+          <summary>Menu</summary>
+          <ul class="${cls('sidebar')}">
+            <li><a href="/">Next</a></li>
+            <li><a href="?status=${status.SOMEDAY}">Someday</a></li>
+            <li><a href="?status=${status.WAITING}">Waiting</a></li>
+          </ul>
+        </details>
+        <details>
+          <summary>Add</summary>
+          <Add-Form />
+        </details>
       </div>
+      <Items :items="items" :status="status" />
     </div>`,
     mixins: [withCss.data(`
       body{
@@ -29,14 +36,22 @@ export default {
       }
 
       .Index {
+        width: -moz-max-content;
+        margin: auto;
+        max-width: 100%;
+      }
+
+      .Index__top {
         display: flex;
       }
 
       .Index__sidebar {
+        position: absolute;
         list-style: none;
         padding: 0;
         margin: 0;
         background: #eee;
+        z-index: 1;
       }
 
       .Index__sidebar a:link,
@@ -44,16 +59,11 @@ export default {
         display: block;
         color: black;
         text-decoration: none;
-        font-size: 0.7em;
         padding: 0.5em;
       }
 
       .Index__sidebar a:hover {
-        text-decoration: underline;
-      }
-
-      .Index__main {
-        padding: 0.5em;
+        background: #FFC;
       }
     `)]
   };

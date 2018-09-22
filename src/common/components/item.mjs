@@ -20,7 +20,7 @@ export default {
   }
 
   .Item > * {
-    padding: 1em;
+    padding: 0.5em;
   }
 
   .Item__complete svg {
@@ -69,9 +69,11 @@ export default {
 
   .Item__title {
     flex-grow: 1;
+    word-wrap: break-word;
+    min-width: 0;
   }
   `)],
-  props: ['i', 'first', 'last', 'status'],
+  props: ['i', 'first', 'last', 'status', 'hideMoveForm'],
   computed: {
     noteMd() {
       return marked(this.i.note)
@@ -90,7 +92,7 @@ export default {
         </svg>
       </Button>
     </form>
-    <Move :item="i" :up="!first" :down="!last" :status="status" />
+    <Move v-if="!hideMoveForm" :item="i" :up="!first" :down="!last" :status="status" />
     <details v-if="i.note" class="${bem('note')} ${bem('title')}">
       <summary>{{ i.title }}</summary>
       <div v-html="noteMd" class="${bem('note-contents')}"></div>

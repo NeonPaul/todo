@@ -6,6 +6,9 @@ const { Sortable } = Draggable;
 export default {
   props: ['items', 'status'],
   inject: ["dispatch"],
+  data(){
+    return { componentMounted: false };
+  },
   components: {
     Item
   },
@@ -31,8 +34,9 @@ export default {
         this.change({ moved: e.data });
       }
     });
+    this.componentMounted = true;
   },
   template: `<div class="Items">
-    <Item v-for="(item, index) in items" :key="item.id" :i="item" :status="status" :first="index === 0" :last="index === items.length - 1"/><br>
+    <Item v-for="(item, index) in items" :key="item.id" :i="item" :status="status" :first="index === 0" :last="index === items.length - 1" :hideMoveForm="componentMounted"/><br>
   </div>`
 }
