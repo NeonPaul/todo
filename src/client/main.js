@@ -2,6 +2,8 @@ import Index from '../common/components/index.mjs';
 import Vue from '/~/vue'
 import Vuex from '/~/vuex'
 
+document.body.classList.add('has-js');
+
 Vue.use(Vuex);
 
 const { items, status } = window.vueCx;

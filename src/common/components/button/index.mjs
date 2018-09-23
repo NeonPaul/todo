@@ -13,7 +13,6 @@ export default ({
   .Button {
     background: transparent;
     border: none;
-    opacity: 0.5;
     padding: 0;
   }
 

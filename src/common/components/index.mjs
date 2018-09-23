@@ -1,7 +1,8 @@
-import status from '../status';
 import withCss from '../mixins/with-css';
 import Items from './items';
 import AddForm from './add-form';
+import Menu from './menu';
+import Viewport from './viewport';
 import bemHelper from '../utils/bem-helper';
 
 const cls = bemHelper('Index')
@@ -9,25 +10,24 @@ const cls = bemHelper('Index')
 export default {
     components: {
       AddForm,
-      Items
+      Items,
+      Menu,
+      Viewport
     },
     props: ['items', 'status'],
     template: `<div class=${cls()} id="app">
-      <div class="${cls('top')}">
-        <details>
-          <summary>Menu</summary>
-          <ul class="${cls('sidebar')}">
-            <li><a href="/">Next</a></li>
-            <li><a href="?status=${status.SOMEDAY}">Someday</a></li>
-            <li><a href="?status=${status.WAITING}">Waiting</a></li>
-          </ul>
-        </details>
-        <details>
-          <summary>Add</summary>
-          <Add-Form />
-        </details>
+    <Viewport>
+      <Menu slot="drawer"/>
+      <div class="${cls('top')}" slot="heading">
+      <details>
+        <summary>Add</summary>
+        <Add-Form />
+      </details>
+    </div>
+      <div class=${cls('main')}>
+        <Items :items="items" :status="status" />
       </div>
-      <Items :items="items" :status="status" />
+      </Viewport>
     </div>`,
     mixins: [withCss.data(`
       body{
@@ -39,6 +39,7 @@ export default {
         width: -moz-max-content;
         margin: auto;
         max-width: 100%;
+        display: flex;
       }
 
       .Index__top {
