@@ -15,6 +15,14 @@ export default {
     background: #EEE;
   }
 
+  .Item.draggable--over {
+    border-bottom: 5px solid black;
+  }
+
+  .Item.draggable-mirror {
+    opacity: 0.5;
+  }
+
   .Item:nth-child(odd) {
     background: #F7F7F7;
   }

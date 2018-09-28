@@ -6,13 +6,13 @@ const bem = bemHelper('Viewport')
 export default ({
   template: `
     <div class="${bem()}" :data-drawer="drawer">
-      <div class="${bem('cover')}" @click="drawer=false"></div>
+      <div class="${bem('cover')}" @click="drawerOpen=false"></div>
       <div class="${bem('drawer')}">
         <slot name="drawer"></slot>
       </div>
       <div class="${bem('main')}">
         <div class="${bem('heading')}">
-          <button @click="drawer=true">Menu</button>
+          <button @click="drawerOpen=true">Menu</button>
           <slot name="heading"></slot>
         </div>
         <slot></slot>
@@ -21,12 +21,18 @@ export default ({
   `,
   data(){
     return {
-      drawer: false
+      drawerOpen: false
     };
   },
+  props: ['peak'],
   methods: {
     openMenu(){
-      this.drawer = true;
+      this.drawerOpen = true;
+    }
+  },
+  computed:{
+    drawer() {
+      return (this.drawerOpen && 'open') || (this.peak && 'peak');
     }
   },
   mixins: [withCss.data(`
@@ -35,7 +41,7 @@ export default ({
     height: 100%;
   }
 
-  [data-drawer] .Viewport__cover {
+  [data-drawer=open] .Viewport__cover {
     left: 0;
     width: 100%;
     height: 100%;
@@ -50,7 +56,14 @@ export default ({
     transition: transform cubic-bezier(.20,0,.10,1) 300ms;
   }
 
-  [data-drawer] .Viewport__drawer {
+
+  [data-drawer=peak] .Viewport__drawer {
+    transform: translateX(-50%);
+  }
+
+
+  [data-drawer=peak] .Viewport__drawer:hover,
+  [data-drawer=open] .Viewport__drawer {
     transform: translateX(0);
   }
 

@@ -1,7 +1,5 @@
 import Item from './item';
-import Draggable from '/!/@shopify/draggable';
-
-const { Sortable } = Draggable;
+import { mixins } from '../mixins/draggable';
 
 export default {
   props: ['items', 'status'],
@@ -12,6 +10,7 @@ export default {
   components: {
     Item
   },
+  mixins:[mixins.dropTarget],
   methods: {
     change(obj) {
       this.dispatch({
@@ -20,23 +19,22 @@ export default {
       })
     }
   },
+  mounted(){
+    this.$on('over', ([ oldItem, newItem ]) => {
+      if (newItem) {
+        this.change({
+          moved: {
+            oldIndex: oldItem.index,
+            newIndex: newItem.index
+          }
+        })
+      }
+    });
+  },
   async mounted() {
-    this.sortable = new Sortable(this.$el, {
-      draggable: '.Items > *'
-    })
-    this.sortable.on('drag:start', (e) => {
-      if(e.data.sensorEvent.data.target.tagName.match(/input|textarea|button|select/i)){
-        e.cancel();
-      }
-    });
-    this.sortable.on('sortable:stop', (e) => {
-      if(e.data.oldIndex !== e.data.newIndex) {
-        this.change({ moved: e.data });
-      }
-    });
     this.componentMounted = true;
   },
   template: `<div class="Items">
-    <Item v-for="(item, index) in items" :key="item.id" :i="item" :status="status" :first="index === 0" :last="index === items.length - 1" :hideMoveForm="componentMounted"/><br>
+    <Item v-for="(item, index) in items" v-draggable="{ item, index }" :key="item.id" :i="item" :status="status" :first="index === 0" :last="index === items.length - 1" :hideMoveForm="componentMounted"/><br>
   </div>`
 }

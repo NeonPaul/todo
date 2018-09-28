@@ -4,6 +4,7 @@ import AddForm from './add-form';
 import Menu from './menu';
 import Viewport from './viewport';
 import bemHelper from '../utils/bem-helper';
+import { dragBus } from '../mixins/draggable';
 
 const cls = bemHelper('Index')
 
@@ -15,8 +16,13 @@ export default {
       Viewport
     },
     props: ['items', 'status'],
+    data() {
+      return {
+        peak: false
+      };
+    },
     template: `<div class=${cls()} id="app">
-    <Viewport>
+    <Viewport :peak="peak">
       <Menu slot="drawer"/>
       <div class="${cls('top')}" slot="heading">
       <details>
@@ -29,6 +35,10 @@ export default {
       </div>
       </Viewport>
     </div>`,
+    mounted(){
+      dragBus.$on('dragstart', () => this.peak = true);
+      dragBus.$on('dragend', () => this.peak = false);
+    },
     mixins: [withCss.data(`
       body{
         margin: 0;
